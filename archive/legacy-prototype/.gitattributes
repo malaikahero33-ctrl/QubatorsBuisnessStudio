@@ -1,0 +1,19 @@
+# Normalise line endings so the repo stores LF and nothing shows up as modified
+# just because a file was opened in a different editor.
+* text=auto eol=lf
+
+# Windows scripts must keep CRLF or PowerShell misbehaves.
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Never rewrite these.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.zip binary
+*.pdf binary

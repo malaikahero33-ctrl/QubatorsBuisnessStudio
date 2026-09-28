@@ -1,0 +1,49 @@
+# Nothing in this project needs to be ignored at runtime.
+# This is a dependency-free static site: every file here is meant to be committed.
+
+# Windows / macOS noise
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+desktop.ini
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# Editors
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+*.swp
+*.swo
+*~
+
+# Logs and temp files
+*.log
+npm-debug.log*
+*.tmp
+*.bak
+*.orig
+
+# Local environment / secrets — never commit these
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+secrets.json
+*token*.txt
+
+# Backups of the project itself (keep these out of history)
+*.zip
+backup/
+backups/
+
+# OS-level
+nohup.out
+Thumbs
