@@ -56,6 +56,33 @@ export const emailSchema = z
   .max(320, "Email is too long")
   .transform((v) => v.trim().toLowerCase());
 
+/**
+ * Sign-up form.
+ *
+ * Validated as one object rather than a list of independent checks, so a
+ * successful parse narrows the type of every field. Checking each field
+ * separately and collecting errors into a bag loses that narrowing, and the
+ * compiler cannot then tell a validated string from an unvalidated one.
+ */
+export const signUpSchema = z.object({
+  full_name: z.string().trim().min(2, "Enter your name").max(120),
+  email: emailSchema,
+  password: z
+    .string()
+    .min(8, "Use at least 8 characters")
+    .max(200, "Password is too long"),
+});
+
+export type SignUpInput = z.infer<typeof signUpSchema>;
+
+/** Sign-in form. Supabase verifies the password; we only check the shape. */
+export const signInSchema = z.object({
+  email: emailSchema,
+  password: z.string().min(1, "Enter your password").max(200),
+});
+
+export type SignInInput = z.infer<typeof signInSchema>;
+
 /** A cuid-style identifier, e.g. from a shared link. */
 export const shareTokenSchema = z
   .string()

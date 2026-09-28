@@ -110,3 +110,91 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/*
+ * Component layer, ported from the archived prototype (ADR-7).
+ *
+ * Only the primitives Tailwind utilities cannot express alone: buttons,
+ * pills and inputs. Everything else is composed with Tailwind classes.
+ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 0.625rem;
+  background: var(--surface);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s, color 0.15s, background-color 0.15s;
+}
+.btn:hover:not([aria-disabled="true"]) {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+.btn:disabled,
+.btn[aria-disabled="true"],
+.btn.cursor-not-allowed {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--brand), #8a5cff);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 6px 18px rgb(109 74 255 / 0.3);
+}
+.btn-primary:hover:not([aria-disabled="true"]) {
+  color: #fff;
+  filter: brightness(1.07);
+}
+
+.btn-sm {
+  padding: 0.3rem 0.65rem;
+  font-size: 0.75rem;
+  border-radius: 0.5rem;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+.pill-brand { background: var(--brand-soft); color: var(--brand-ink); }
+.pill-info { background: color-mix(in srgb, var(--info) 15%, transparent); color: var(--info); }
+.pill-success { background: color-mix(in srgb, var(--success) 15%, transparent); color: var(--success); }
+.pill-warn { background: color-mix(in srgb, var(--warning) 17%, transparent); color: var(--warning); }
+.pill-danger { background: color-mix(in srgb, var(--danger) 15%, transparent); color: var(--danger); }
+
+.input {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 0.625rem;
+  background: var(--surface-2);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 0.875rem;
+}
+.input:focus {
+  outline: 2px solid var(--brand-soft);
+  border-color: var(--brand);
+  background: var(--surface);
+}
+.input[aria-invalid="true"] {
+  border-color: var(--danger);
+}

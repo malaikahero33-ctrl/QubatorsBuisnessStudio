@@ -14,19 +14,37 @@
 
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isSupabaseConfigured } from "@/lib/config";
 
 /** Routes that require a session. */
 const PROTECTED_PREFIXES = ["/dashboard", "/business", "/ai", "/admin"];
 
 /** Routes only useful when signed out. */
-const AUTH_ROUTES = ["/login", "/signup", "/forgot-password", "/reset-password"];
+const AUTH_ROUTES = [
+  "/login",
+  "/signup",
+  "/forgot-password",
+  "/reset-password",
+];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
+  //
+  // Without a configured Supabase project there is no session to refresh, and
+  // createServerClient() throws on an empty URL. Because this runs on EVERY
+  // request, that would 500 the whole app before any page could render its own
+  // setup guidance.
+  //
+  // So: no Supabase, no auth check here. Protected pages guard themselves
+  // (app/dashboard/layout.tsx redirects to /setup).
+  if (!isSupabaseConfigured()) {
+    return response;
+  }
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
         getAll() {
