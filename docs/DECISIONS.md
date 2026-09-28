@@ -153,6 +153,78 @@ RLS policy. The table costs nothing now; the migration costs a week later.
 
 ---
 
+## ADR-9: Next.js 16, and no webfonts
+
+**Status:** Accepted · 28 Sep 2026
+
+**Version.** `create-next-app@latest` produced **16.3.6** at scaffold time, not the 15
+this document originally named. Scaffolding followed the current stable rather than
+pinning an older major to match a paragraph written three days earlier.
+
+**Rationale:** 16 is the current stable with security fixes and a matured App Router. The
+architecture document is ours to correct, not a constraint on the product. If 16 causes
+trouble, the fallback is pinning 15 — `create-next-app@15` — and recording the reason.
+
+**No webfonts.** The generated `app/layout.tsx` imported Geist from `next/font/google`,
+which issues a build-time and runtime request to Google Fonts. That was removed. The app
+now uses a system font stack defined in `app/globals.css` under `@theme inline`.
+
+**Rationale:** the project previously committed to making zero external network requests.
+A framework default should not quietly reverse a stated product decision. It also means
+the app renders identically offline and in Uganda, where font-CDN latency and reachability
+are less reliable than on a developer's machine.
+
+**Enforcement:** a test asserts no `next/font/google` import exists in `app/`. If someone
+adds a webfont, the test fails.
+
+---
+
+## ADR-10: Node 24, not Node 20
+
+**Status:** Accepted · 28 Sep 2026
+
+Node **20.20.2** was installed first, on the reasonable grounds that it was the LTS line
+at the time. That was wrong. `@supabase/supabase-js@2.117.2` and its dependencies
+(`@supabase/realtime-js`, `@supabase/storage-js`) declare `engines.node: ">=22.0.0"`, and
+npm surfaces the mismatch only as a warning — the install appears to succeed and the
+failure surfaces later, at runtime.
+
+**Decision:** **Node 24 LTS** (24.21.0, "Krypton"). `package.json` pins
+`"engines": { "node": ">=22.0.0" }` so a Node 20 machine fails fast and loudly at install
+time rather than mysteriously at runtime.
+
+**Note on Next.js:** Next 16.3.6 itself only requires `>=20.9.0`. The constraint comes
+entirely from Supabase. Worth checking *transitive* engines, not just the framework's own.
+
+**Install method:** official `.zip` extracted to a user-writable folder, not the MSI
+installer. The MSI path failed on this machine with error 1603 and a wedged Windows
+Installer (error 1618 on every retry), and `winget` hung for 39 minutes. The zip needs no
+elevation and is reproducible.
+
+---
+
+## ADR-11: The repository must live outside OneDrive
+
+**Status:** Accepted · 28 Sep 2026
+
+The repository was created at
+`C:\Users\ashab\OneDrive\Documents\GitHub\QubatorsBuisnessStudio`, inside a OneDrive-synced
+folder. `npm install` there was measured at **~60 files/second**, writing 414 MB across
+18,000+ files, and did not complete. The identical install in a non-synced temp directory
+finished in 5 minutes.
+
+**Decision:** work from a local path such as `C:\dev\QubatorsBuisnessStudio`. OneDrive
+should hold documents, not a build toolchain.
+
+**Why this is not a data-loss concern:** `.gitignore` excludes `node_modules` and `.next`,
+so GitHub is unaffected, and `origin` already holds every commit. OneDrive was providing
+no backup that Git does not already provide, while making every npm command
+(`install`, `dev`, `build`, `test`) roughly an order of magnitude slower.
+
+**Revisit if:** never. This is a filesystem-placement fact, not a preference.
+
+---
+
 ## Open questions
 
 | # | Question | Blocks | Owner |

@@ -10,7 +10,7 @@ Related: [DATABASE.md](./DATABASE.md) · [API.md](./API.md) · [DECISIONS.md](./
 
 | Layer | Choice | Why |
 |---|---|---|
-| Framework | **Next.js 15** (App Router) | PRD-mandated. Gives SSR, API routes and deployment in one unit — no separate backend to host or secure. |
+| Framework | **Next.js 16** (App Router) | PRD-mandated. Gives SSR, API routes and deployment in one unit — no separate backend to host or secure. Scaffolded on 16.3.6; see [ADR-9](./DECISIONS.md#adr-9-nextjs-16-and-no-webfonts). |
 | Language | **TypeScript** (strict) | The domain is money, dates and AI output. Types are the cheapest guard. |
 | Styling | **Tailwind CSS** | PRD-mandated. |
 | Database | **PostgreSQL** via **Supabase** | PRD-mandated. Gives Postgres *and* Auth *and* Storage *and* RLS from one vendor. |
@@ -93,13 +93,14 @@ qubators-business-studio/
 │   ├── email/     ZeptoMail client + templates
 │   ├── money.ts   the ONLY place money is formatted
 │   ├── validation/  Zod schemas
+│   ├── supabase/    browser + server clients
 │   └── analytics/ product event tracking
 ├── database/migrations/       numbered SQL
 ├── docs/
 ├── public/
 ├── tests/
 ├── .env.example
-└── middleware.ts              session refresh + route protection
+└── proxy.ts                  session refresh (Next 16 renamed middleware -> proxy) + route protection
 ```
 
 `lib/money.ts` is the single point of truth for currency handling. See

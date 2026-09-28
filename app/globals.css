@@ -1,0 +1,112 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens ported from archive/legacy-prototype/assets/css/styles.css
+ * per docs/DECISIONS.md ADR-7.
+ *
+ * Ported: the colour system, light and dark themes, focus-visible rings and
+ * the system font stack.
+ * Not ported: the prototype's currency handling, data layer or views.
+ *
+ * No webfonts. The app makes zero external network requests, so it runs
+ * fully offline. See README.md.
+ */
+
+:root {
+  /* Brand */
+  --brand: #6d4aff;
+  --brand-2: #22d3ee;
+  --brand-soft: rgb(109 74 255 / 0.12);
+  --brand-ink: #4b31cc;
+
+  /* Surfaces */
+  --background: #f5f6fb;
+  --surface: #ffffff;
+  --surface-2: #f1f2f8;
+  --surface-3: #e8eaf3;
+  --border: #e5e7f0;
+
+  /* Text */
+  --foreground: #15172b;
+  --muted: #6a6f8c;
+
+  /* Status */
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #3b82f6;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0b0c17;
+    --surface: #14162a;
+    --surface-2: #1a1d33;
+    --surface-3: #232744;
+    --border: #262a45;
+    --foreground: #eef0fb;
+    --muted: #9499b8;
+    --brand-soft: rgb(109 74 255 / 0.22);
+    --brand-ink: #c3b0ff;
+
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-brand: var(--brand);
+  --color-brand-2: var(--brand-2);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-ink: var(--brand-ink);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
+
+  /*
+   * System font stack. No webfont download, no external request.
+   * Segoe UI first on Windows; falls back gracefully elsewhere.
+   */
+  --font-sans: "Segoe UI Variable Display", "Segoe UI", system-ui, -apple-system,
+    "Helvetica Neue", Roboto, Arial, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", "Cascadia Code", Consolas,
+    "SF Mono", Menlo, "DejaVu Sans Mono", monospace;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+/*
+ * A visible focus ring everywhere. The archived prototype already had these
+ * and they are the reason its accessibility work was worth porting.
+ * Never remove without replacing with an equally visible indicator.
+ */
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Respect the user's motion preference. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

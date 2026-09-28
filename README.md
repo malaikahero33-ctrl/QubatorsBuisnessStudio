@@ -11,7 +11,7 @@ Target market: **Uganda → East Africa → Africa → Global**
 
 ## Status
 
-**Pre-implementation. No application code yet.**
+**Foundation scaffolded.** The app builds; there is no product feature code yet.
 
 | Milestone | State |
 |---|---|
@@ -20,7 +20,10 @@ Target market: **Uganda → East Africa → Africa → Global**
 | Database design | ✅ [`docs/DATABASE.md`](docs/DATABASE.md) |
 | API contract | ✅ [`docs/API.md`](docs/API.md) |
 | Decision log | ✅ [`docs/DECISIONS.md`](docs/DECISIONS.md) |
-| Foundation scaffolding | ⬜ next |
+| Next.js 16 + TypeScript + Tailwind scaffold | ✅ |
+| Money module + tests | ✅ [`lib/money.ts`](lib/money.ts) |
+| Supabase clients, middleware, validation, AI adapter | ✅ |
+| Database migrations | ⬜ next |
 | Authentication | ⬜ |
 | AI engine | ⬜ |
 
@@ -62,11 +65,18 @@ Planned, in MVP order:
 
 ### Prerequisites
 
-- **Node.js 20 LTS** — `node --version` should print `v20.x`
+- **Node.js 24 LTS** (or any `>=22.0.0`) — `node --version` must satisfy `package.json`
+  `engines`. Supabase requires `>=22`; the constraint is transitive, not from Next.js.
 - **Git** — for clone and commits
 - A **Supabase project** — database, auth and storage
 - An **LLM API key** — for the AI engine
 - A **domain you control** — required before ZeptoMail can send
+
+> **Keep the repo out of OneDrive.** A `node_modules` tree is 400 MB across ~18,000 tiny
+> files. Inside a OneDrive-synced folder the install was measured at ~60 files/second and
+> did not finish; the same install outside OneDrive completes in minutes. `.gitignore`
+> already excludes `node_modules`, and the GitHub remote provides backup — OneDrive adds
+> nothing but the slowdown. See ADR-11.
 
 ### Setup
 
@@ -94,10 +104,11 @@ PRD section 15 and it is the single most important rule in this codebase.
 |---|---|
 | `npm run dev` | Development server |
 | `npm run build` | Production build |
+| `npm start` | Serve the production build |
 | `npm run lint` | Lint, including architecture boundary rules |
 | `npm run typecheck` | TypeScript, no emit |
-| `npm test` | Unit and integration tests |
-| `db:push` | Apply database migrations |
+| `npm test` | Unit and integration tests (Vitest) |
+| `npm run db:push` | Apply database migrations |
 
 ---
 
@@ -112,12 +123,13 @@ PRD section 15 and it is the single most important rule in this codebase.
 │   ├── auth/            session and membership checks
 │   ├── database/        typed queries
 │   ├── email/           ZeptoMail client and templates
+│   ├── supabase/        browser + server clients
 │   ├── money.ts         the only place money is formatted
 │   └── validation/      Zod schemas
 ├── database/migrations/ numbered SQL
 ├── docs/                PRD and design documents
 ├── archive/             superseded work — reference only
-└── tests/
+└── proxy.ts                  session refresh + route protection
 ```
 
 ---
