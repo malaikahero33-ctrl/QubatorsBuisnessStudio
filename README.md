@@ -126,7 +126,7 @@ PRD section 15 and it is the single most important rule in this codebase.
 │   ├── supabase/        browser + server clients
 │   ├── money.ts         the only place money is formatted
 │   └── validation/      Zod schemas
-├── database/migrations/ numbered SQL
+├── supabase/migrations/ numbered SQL
 ├── docs/                PRD and design documents
 ├── archive/             superseded work — reference only
 └── proxy.ts                  session refresh + route protection

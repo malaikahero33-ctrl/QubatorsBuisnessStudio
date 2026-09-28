@@ -314,5 +314,5 @@ Beyond those listed per table:
 
 ## 7. Migrations
 
-Plain SQL in `database/migrations/`, numbered `0001_`, `0002_`, … and applied in order
+Plain SQL in `supabase/migrations/`, numbered `0001_`, `0002_`, … and applied in order
 via the Supabase CLI. Never edit an applied migration — add a new one.

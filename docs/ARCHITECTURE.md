@@ -95,7 +95,7 @@ qubators-business-studio/
 │   ├── validation/  Zod schemas
 │   ├── supabase/    browser + server clients
 │   └── analytics/ product event tracking
-├── database/migrations/       numbered SQL
+├── supabase/migrations/       numbered SQL
 ├── docs/
 ├── public/
 ├── tests/

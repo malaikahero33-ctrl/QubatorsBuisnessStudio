@@ -225,6 +225,29 @@ no backup that Git does not already provide, while making every npm command
 
 ---
 
+## ADR-12: Migrations live in `supabase/`, not the PRD's `database/`
+
+**Status:** Accepted · 28 Sep 2026
+
+PRD section 20 proposes a `database/` directory for migrations. The first schema was
+written there.
+
+**Decision:** use `supabase/migrations/` and `supabase/seed.sql` instead.
+
+**Why:** the Supabase CLI only reads those two paths. `supabase db push` applies
+**nothing** when migrations live anywhere else — no error, no warning, just an empty
+database that looks like a successful deploy. That is the worst possible failure mode
+for a schema push.
+
+The PRD's directory sketch is a guideline; a working deployment path is not negotiable.
+`docs/PRD.md` is left unmodified as the source of truth, and this ADR records the
+deviation.
+
+Migration files are renamed to the CLI's `<timestamp>_<name>.sql` convention so ordering
+is explicit rather than inferred from a hand-written number.
+
+---
+
 ## Open questions
 
 | # | Question | Blocks | Owner |
