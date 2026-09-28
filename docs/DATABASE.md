@@ -76,8 +76,11 @@ auth.users  (Supabase-managed)
 
 ## 3. Tables
 
-The PRD lists 19 entities. Three changes, each for a stated reason:
+**21 tables in total**, across three migrations.
 
+The PRD lists 19 entities. `users` is one of them, but that is Supabase's own
+`auth.users` — we do not create it, we reference it. So 18 are ours to build, plus the
+three additions below. Three changes, each for a stated reason:
 1. **`order_items` added.** An order with a single `product_id` cannot represent an order
    of four products. The PRD's `orders` entity is under-specified.
 2. **`business_members` added.** Required for the V2 "team accounts" feature and for any

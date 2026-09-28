@@ -13,8 +13,10 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:push": "supabase db push",
-    "db:reset": "supabase db reset"
+    "db:push": "node scripts/apply-migrations.mjs",
+    "db:seed": "node scripts/apply-migrations.mjs --seed",
+    "db:check": "node scripts/apply-migrations.mjs --dry-run",
+    "supabase": "supabase"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -31,6 +33,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.6",
+    "pg": "^8.23.0",
     "supabase": "^2.118.0",
     "tailwindcss": "^4",
     "typescript": "^5",

@@ -15,8 +15,14 @@
 -- -----------------------------------------------------------------------------
 -- Demo user
 --
--- A verified account with a known password for local development.
--- The hash below is bcrypt for the password "demo-password-123".
+-- A verified account with a known password for local development: demo-password-123
+--
+-- There is no hardcoded hash here. crypt() derives it at run time, so the
+-- password can never drift from this comment.
+--
+-- If this insert fails with a permission error, create the user in the
+-- dashboard instead (Authentication -> Users -> Add user, tick Auto Confirm
+-- User) and re-run: the block below finds the existing user and skips it.
 -- -----------------------------------------------------------------------------
 do $$
 declare
@@ -53,8 +59,9 @@ $$;
 -- -----------------------------------------------------------------------------
 do $$
 declare
-  v_user uuid;
-  v_biz  uuid;
+  v_user     uuid;
+  v_biz      uuid;
+  v_campaign uuid;
 begin
   select id into v_user from auth.users where email = 'founder@qubators.test';
   select id into v_biz from public.businesses where owner_id = v_user limit 1;
@@ -150,9 +157,10 @@ begin
     (v_biz, 'SafeNet Security',    'Monthly bandwidth',     'utilities',   120000, 'UGX', current_date -  7);
 
   -- ---- campaign ------------------------------------------------------------
-  do $$
-  declare v_campaign uuid;
-  begin
+  -- NOTE: this used to be a nested `do $$` block. Postgres dollar-quoting does
+  -- NOT nest - the inner $$ would have terminated the outer block early and
+  -- produced a syntax error. v_campaign is now declared in the outer DECLARE.
+  if not exists (select 1 from public.campaigns where business_id = v_biz and name = 'Wet season launch') then
     insert into public.campaigns (business_id, name, goal, audience, channel, budget_minor, currency, starts_at, ends_at, status, reach, engagement, leads, conversions, revenue_minor)
     values (v_biz, 'Wet season launch', 'First 100 stockists', 'Urban retailers, Kampala', 'social',
             3000000, 'UGX', timezone('utc', now()) - interval '10 days', timezone('utc', now()) + interval '5 days', 'active',
@@ -163,8 +171,7 @@ begin
     values (v_campaign, v_biz, 'social_post',
             'Sunrise Granola now in 184 stockists across Kampala. Roasted oats, real honey, no palm oil. Find us near you.',
             'launch', false, null, '[]'::jsonb, timezone('utc', now()));
-  end;
-  $$;
+  end if;
 
   -- ---- tasks ---------------------------------------------------------------
   insert into public.tasks (business_id, title, description, status, priority, due_at, source)
