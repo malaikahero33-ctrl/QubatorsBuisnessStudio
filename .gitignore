@@ -61,5 +61,13 @@ public/uploads/
 tmp/
 temp/
 
+# Supabase CLI local state - caches, not source
+supabase/.temp/
+supabase/.branches/
+supabase/.env
+# ...but the migrations and seed ARE source and must be tracked
+!supabase/migrations/
+!supabase/seed.sql
+
 # Archive — the legacy prototype is tracked deliberately, keep it.
 # Do NOT blanket-ignore /archive/
