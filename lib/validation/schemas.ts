@@ -149,6 +149,52 @@ export const createBusinessSchema = z.object({
 
 export type CreateBusinessInput = z.infer<typeof createBusinessSchema>;
 
+/** Order lifecycle. Mirrors the DB CHECK constraint. */
+export const ORDER_STATUSES = [
+  { value: "pending", label: "Pending", hint: "Taken, not confirmed" },
+  { value: "confirmed", label: "Confirmed", hint: "Agreed and scheduled" },
+  { value: "in_progress", label: "In progress", hint: "Being made" },
+  { value: "shipped", label: "Shipped", hint: "On its way" },
+  { value: "completed", label: "Completed", hint: "Delivered and paid" },
+  { value: "cancelled", label: "Cancelled", hint: "Not going ahead" },
+] as const;
+
+export const orderItemSchema = z.object({
+  product_id: z.string().uuid("Not a valid product").optional().or(z.literal("")),
+  service_id: z.string().uuid("Not a valid service").optional().or(z.literal("")),
+  description: z
+    .string()
+    .trim()
+    .min(1, "Describe what this line is")
+    .max(300, "Keep the description under 300 characters"),
+  quantity: z.coerce.number().int("Whole numbers only").min(1, "At least 1").max(1_000_000),
+  unit_price_minor: z
+    .number()
+    .int("Price must be a whole number of minor units")
+    .nonnegative("Price cannot be negative"),
+});
+
+export type OrderItemInput = z.infer<typeof orderItemSchema>;
+
+/**
+ * Creating an order.
+ *
+ * `items` is `z.array(...).min(1)` because an order with no lines is not an
+ * order. The total is NOT accepted from the client at all: it is a generated
+ * column recomputed by a database trigger, so there is no field to spoof.
+ */
+export const createOrderSchema = z.object({
+  customer_id: z.string().uuid("Choose a customer"),
+  status: z
+    .enum(["pending", "confirmed", "in_progress", "shipped", "completed", "cancelled"])
+    .default("pending"),
+  due_at: z.string().trim().optional().or(z.literal("")),
+  notes: z.string().trim().max(2000).optional().or(z.literal("")),
+  items: z.array(orderItemSchema).min(1, "Add at least one line to the order"),
+});
+
+export type CreateOrderInput = z.infer<typeof createOrderSchema>;
+
 /**
  * Products.
  *
