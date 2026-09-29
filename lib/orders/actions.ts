@@ -24,6 +24,8 @@ import {
   ORDER_STATUSES,
 } from "@/lib/validation/schemas";
 import { isSupabaseConfigured } from "@/lib/config";
+import { notify } from "@/lib/notifications/actions";
+import { formatMoney, type CurrencyCode } from "@/lib/money";
 import type { ActionState } from "@/lib/auth/actions";
 
 /** Next order number for a business: QB-1004, QB-1005, … */
@@ -141,8 +143,38 @@ export async function createOrderAction(
     return { status: "error", message: friendlyError(itemError.message) };
   }
 
+  // Tell the owner an order exists. notify() checks the user's own preference
+  // and never throws, so a failed notification cannot undo a good order.
+  //
+  // The total is re-read rather than reused: the trigger has only just
+  // computed it, and the insert above returned it as 0 because no lines
+  // existed yet.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    const { data: computed } = await supabase
+      .from("orders")
+      .select("total_minor, currency")
+      .eq("id", order.id)
+      .maybeSingle();
+
+    if (computed) {
+      await notify({
+        userId: user.id,
+        businessId: business.id,
+        kind: "new_order",
+        title: `Order ${orderNumber} created`,
+        body: `${formatMoney(computed.total_minor, computed.currency as CurrencyCode)} across ${lines.length} line(s).`,
+        href: "/orders",
+      });
+    }
+  }
+
   revalidatePath("/orders");
   revalidatePath("/dashboard");
+  revalidatePath("/notifications");
 
   return {
     status: "success",
@@ -170,6 +202,7 @@ export async function setOrderStatusAction(formData: FormData): Promise<void> {
   revalidatePath("/orders");
   revalidatePath("/dashboard");
   revalidatePath("/customers");
+  revalidatePath("/notifications");
 }
 
 export async function deleteOrderAction(formData: FormData): Promise<void> {

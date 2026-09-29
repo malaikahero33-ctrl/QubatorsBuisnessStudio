@@ -14,8 +14,14 @@ These have been exercised in a browser, not just compiled.
 | **Dashboard** | Revenue 60,000,000 - spent 3,150,000 = profit 56,850,000. Exact. |
 | **Products** | Create, edit, archive, delete. Margin computed per product. |
 | **Customers** | Create, edit, delete. Phones normalised to E.164. |
+| **Orders** | Create with lines, status changes, delete. Database computed the total. |
+| **Finance** | Income and expenses, month-by-month bars, spend breakdown |
+| **Settings** | Business profile, your details, notification preferences |
+| **Notifications** | List, read state, dismiss, preference flags honoured |
 | **Money module** | Renders "USh" - the zero-decimal UGX path |
 | **Dark mode** | Three-state toggle, persists across reload, no flash |
+| **Error boundaries** | A failed page keeps the shell and explains itself |
+| **Loading states** | Skeletons shaped like the pages they stand in for |
 
 The profit arithmetic matching to the shilling is the strongest signal so far:
 integer minor-unit storage, the trigger that recomputes order totals, and the
@@ -30,7 +36,7 @@ formatter all agree.
 | 1 | Authentication | **done, verified** |
 | 2 | User dashboard | **done, verified** |
 | 3 | Business creation | **done** |
-| 4 | Business profile | create form only, no edit page |
+| 4 | Business profile | **done, verified** |
 | 5 | AI Business Copilot | not started — needs an LLM key |
 | 6 | Idea generator | not started — needs an LLM key |
 | 7 | Business plan generator | not started — needs an LLM key |
@@ -38,12 +44,14 @@ formatter all agree.
 | 9 | Product management | **done, verified** |
 | 10 | Marketing content | not started — needs an LLM key |
 | 11 | Customer management | **done, verified** |
-| 12 | Financial tracking | not started |
-| 13 | Notifications / email | schema only, no code |
-| 14 | Settings | not started |
+| 12 | Financial tracking | **done, verified** |
+| 13 | Notifications | in-app **done**; email needs a provider |
+| 14 | Settings | **done, verified** |
 
-Not in the PRD MVP but in the schema: order tracking, campaigns, tasks,
-analytics, subscriptions, multi-business.
+Nine of fourteen. The five that remain are all the AI engine.
+
+Not in the PRD MVP but in the schema: order tracking (built), campaigns,
+tasks, analytics, subscriptions, multi-business.
 
 ---
 
@@ -68,21 +76,36 @@ functional and testable; only the model calls need the credential.
 
 ## Known gaps, stated plainly
 
-1. **No tests against a real database.** 36 unit tests cover money and
-   validation only. RLS policies have never been tested for the failure case —
-   specifically, that user B cannot read user A's data.
-2. **No error boundary.** An unexpected throw in a Server Component shows the
-   Next.js error page. Production needs `app/error.tsx`.
-3. **No loading states.** Pages block until data arrives. The PRD's 3-second
-   target is met locally but untested under load.
-4. **Multi-business is half-built.** `business_members` and the RLS policies
+1. **No tests against a real database.** 93 unit tests cover money, validation
+   and the ledger arithmetic. RLS has never been tested for the failure case —
+   specifically, that user B cannot read user A's data. This is the single
+   most important gap and it is not hard to close: two test accounts and a
+   handful of queries.
+2. **Finance loads all rows.** Capped at 500 and it says so on screen. The
+   aggregate belongs in a Postgres view once a business has real volume.
+3. **Multi-business is half-built.** `business_members` and the RLS policies
    are designed for it; `getCurrentBusiness` just takes the first row.
-5. **No test framework for components.** The duplicate `<h1>` and the
+4. **No test framework for components.** The duplicate `<h1>` and the
    duplicated title were found by taking a screenshot, not by any check.
+5. **An `expenses` table exists that nothing reads.** Two tables for the same
+   facts is two chances to disagree. Left in place, unused.
 6. **Dev server is slow** — one page took 2.3 minutes to compile. Production
    builds are unaffected.
 7. **The database password is in this repository's git history**
    discussion and was shared in chat. Rotate it before any real deployment.
+
+### Fixed along the way, worth knowing about
+
+**`notifications` had no INSERT policy.** The RLS policies from the original
+schema covered reading and updating but not creating, so every "new order"
+notification would have failed with a row-level security error. Found by
+probing the live table with real inserts rather than by reading the policies.
+Migration `0004_notification_policies.sql` adds the insert and delete policies,
+both scoped to the row's own `user_id`.
+
+**The `notifications` table is keyed on `user_id`, not `business_id`.** The
+first version of the code assumed otherwise and would have written nothing at
+all.
 
 ---
 
