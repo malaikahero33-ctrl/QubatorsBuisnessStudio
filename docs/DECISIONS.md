@@ -314,12 +314,82 @@ transaction as the tables.
 
 ---
 
+## ADR-15: The `expenses` table is unused; `transactions` is the ledger
+
+**Status:** Accepted · 29 Sep 2026
+
+The schema has both `transactions` (with a `type` column carrying direction, and
+`customer_id` / `order_id` links) and `expenses` (with `vendor`, `receipt_url` and a
+recurrence rule). They describe the same money leaving the business.
+
+Finance is built on `transactions` alone. The dashboard already read it, and it is the
+richer of the two: an expense can be attributed to the customer who caused it, which
+`expenses` cannot do.
+
+**Decision:** one table. `transactions` is the ledger. `expenses` stays in the schema,
+unused, until someone either needs receipts and recurring bills — in which case those
+columns get added to `transactions` — or confirms it is dead, in which case it is
+dropped.
+
+**Why it matters:** two tables for the same facts is two chances to disagree, and a
+disagreement here is a wrong profit figure that looks entirely plausible.
+
+**Revisit if:** receipt upload or recurring bills land. Then add `receipt_url` and
+`is_recurring` to `transactions` and drop `expenses` in the same migration.
+
+---
+
+## ADR-16: Business currency is not editable in settings
+
+**Status:** Accepted · 29 Sep 2026
+
+Every stored amount carries the currency it was entered in: `products.price_minor`,
+`orders.currency`, `transactions.currency`. Nothing stores an exchange rate, and
+`money.ts` deliberately refuses to add amounts in different currencies.
+
+So changing a business's currency after the fact would relabel every existing price
+without converting any of it. `products.price_minor` of 1200000 would silently change
+meaning from "1.2m shillings" to "1,200 dollars".
+
+**Decision:** `currency` is settable at business creation and not afterwards. The
+settings form shows it as fixed text with the reason, and a test asserts the field
+stays out of `updateBusinessSchema` so it cannot be quietly re-added.
+
+**Why it matters:** this is the same class of bug as storing a currency symbol in a
+money column. It is silent, it is total, and it is unrecoverable without knowing the
+original values.
+
+**Revisit if:** a real currency-conversion table is added with rates and effective
+dates. Then conversion becomes a deliberate, recorded operation — and still a separate
+one from a profile edit.
+
+---
+
+## ADR-17: Finance summarises in memory, capped at 500 rows
+
+**Status:** Accepted · 29 Sep 2026, with a known limit · 29 Sep 2026
+
+`app/finance/page.tsx` fetches up to 500 transactions and calls `summariseLedger` in
+Node. There is no SQL aggregation, no view, no cache.
+
+This is the right trade while a business has hundreds of entries. It is the wrong one at
+millions, and the page says so on screen rather than showing a silently truncated total.
+
+**Decision:** in-memory for now, with the 500-row cap surfaced in the UI. When the
+aggregate moves to Postgres, `summariseLedger` does not change — only where it is
+called from — and its tests keep their value.
+
+**Revisit if:** any business approaches 500 transactions. That is when a
+`finance_monthly_totals` view becomes cheaper than the fetch it replaces.
+
+---
+
 ## Open questions
 
 | # | Question | Blocks | Owner |
 |---|---|---|---|
-| 1 | LLM provider and budget ceiling | Phase 3 | — |
-| 2 | Supabase project created? | Phase 1 | — |
+| 1 | LLM provider and budget ceiling | **the last 5 MVP items** | — |
+| 2 | Supabase project created? | **resolved** — ref `dptubikzfvhtmgjvptmt`, 21 tables live | done |
 | 3 | Domain owned, for ZeptoMail sender verification? | Phase 5 | — |
 | 4 | Licence — MIT assumed, unconfirmed | before any public release | — |
 | 5 | Registration open at launch, or invite-only? | Phase 1 | — |
