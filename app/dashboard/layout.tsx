@@ -28,8 +28,8 @@ const NAV: { group: string; items: NavItem[] }[] = [
     items: [
       { href: "/dashboard", label: "Overview" },
       { href: "/business/new", label: "Create business" },
-      { href: "/business/plan", label: "Business plan", soon: true },
-      { href: "/business/brand", label: "Brand", soon: true },
+      { href: "/business/plan", label: "Business plan" },
+      { href: "/business/brand", label: "Brand" },
       { href: "/business/products", label: "Products" },
       { href: "/business/services", label: "Services", soon: true },
     ],
@@ -37,8 +37,9 @@ const NAV: { group: string; items: NavItem[] }[] = [
   {
     group: "AI studio",
     items: [
-      { href: "/ai/copilot", label: "Copilot", soon: true },
-      { href: "/ai/ideas", label: "Idea generator", soon: true },
+      { href: "/ai/copilot", label: "Copilot" },
+      { href: "/ai/ideas", label: "Idea generator" },
+      { href: "/marketing", label: "Marketing" },
     ],
   },
   {

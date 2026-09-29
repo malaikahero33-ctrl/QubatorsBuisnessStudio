@@ -1,7 +1,8 @@
 -- =============================================================================
--- 0005_notification_policies.sql
+-- 0005_write_policies.sql
 --
--- Closes an RLS gap that only appears once notifications actually work.
+-- Closes two RLS gaps that only appear once the features are actually used:
+-- `notifications` and `ai_usage` both have SELECT policies but no INSERT.
 --
 -- Depends on: 0004_grants.sql (table privileges must already exist, or the
 -- error is "permission denied for table" and RLS is never consulted).
@@ -52,6 +53,46 @@ begin
   ) then
     create policy "own notifications deletable"
       on public.notifications for delete
+      using (user_id = auth.uid());
+  end if;
+end
+$$;
+
+-- -----------------------------------------------------------------------------
+-- `ai_usage` has the identical gap, and it matters more.
+--
+-- 0003 gave it a SELECT policy only. Recording per-call token usage is the
+-- whole reason the table exists — ADR-6 added it precisely so a per-user cost
+-- cap could be enforced. With no INSERT policy the cap cannot count anything,
+-- so every AI route would run unmetered.
+--
+-- Scoped to the row's own user_id: a user records their own usage and cannot
+-- forge another user's.
+-- -----------------------------------------------------------------------------
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'ai_usage'
+      and policyname = 'own ai usage insertable'
+  ) then
+    create policy "own ai usage insertable"
+      on public.ai_usage for insert
+      with check (user_id = auth.uid());
+  end if;
+
+  -- Deleting your own usage rows is legitimate: "clear my history" should not
+  -- require an admin. Restricted to a user's own rows for the same reason.
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'ai_usage'
+      and policyname = 'own ai usage deletable'
+  ) then
+    create policy "own ai usage deletable"
+      on public.ai_usage for delete
       using (user_id = auth.uid());
   end if;
 end

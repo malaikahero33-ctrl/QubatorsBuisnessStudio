@@ -37,40 +37,73 @@ formatter all agree.
 | 2 | User dashboard | **done, verified** |
 | 3 | Business creation | **done** |
 | 4 | Business profile | **done, verified** |
-| 5 | AI Business Copilot | not started — needs an LLM key |
-| 6 | Idea generator | not started — needs an LLM key |
-| 7 | Business plan generator | not started — needs an LLM key |
-| 8 | Brand generator | not started — needs an LLM key |
+| 5 | AI Business Copilot | built, verified — needs a key to run |
+| 6 | Idea generator | built, verified — needs a key to run |
+| 7 | Business plan generator | built, verified — needs a key to run |
+| 8 | Brand generator | built, verified — needs a key to run |
 | 9 | Product management | **done, verified** |
-| 10 | Marketing content | not started — needs an LLM key |
+| 10 | Marketing content | built, verified — needs a key to run |
 | 11 | Customer management | **done, verified** |
 | 12 | Financial tracking | **done, verified** |
 | 13 | Notifications | in-app **done**; email needs a provider |
 | 14 | Settings | **done, verified** |
 
-Nine of fourteen. The five that remain are all the AI engine.
+**All fourteen are built.** The five AI features cannot be exercised until
+`AI_API_KEY` is set, so they are "verified" in the sense that matters here:
+they compile, their prompts are unit tested, their envelopes are enforced, and
+without a key every one of them shows a clear "configure your key" state rather
+than failing silently. What is unverified is a real model response.
 
 Not in the PRD MVP but in the schema: order tracking (built), campaigns,
 tasks, analytics, subscriptions, multi-business.
 
 ---
 
-## The AI blocker
+## The AI blocker: one environment variable
 
-**Five of the fourteen MVP items are the AI engine, and none can run without an
-LLM API key.** This is open question 1 in `docs/DECISIONS.md`.
+All five AI features are built — routes, prompts, schemas, UI, metering, daily
+cap. **They cannot run without `AI_API_KEY`,** and which provider to use is
+still open question 1 in `docs/DECISIONS.md`.
 
-The adapter, the assumption contract and the token shapes already exist:
-- `lib/ai/provider.ts` — vendor-agnostic interface, two model tiers
-- `lib/validation/schemas.ts` — `aiEnvelopeSchema` requires a non-empty
-  `assumptions` array, so a response without one cannot be shown
+To try them:
 
-What is missing is a concrete provider implementation and the routes and UI
-around it. That is a day of work *plus* the key.
+1. Pick a provider (OpenAI, Groq, Together, Gemini, or any OpenAI-compatible
+   endpoint — see `lib/ai/provider-openai.ts`)
+2. Add to `.env.local`:
+   ```
+   AI_PROVIDER="openai"
+   AI_API_KEY="sk-..."
+   AI_MODEL_FAST="gpt-4o-mini"
+   AI_MODEL_QUALITY="gpt-4o"
+   ```
+3. Restart the server
 
-**What can be built without the key:** every route, the prompt library, the
-streaming, the UI, and a clear "configure your key" state. The app is
-functional and testable; only the model calls need the credential.
+Without a key, every AI screen says exactly that, and nothing else breaks.
+
+### What is built and testable right now, with no key
+
+| File | What it does |
+|---|---|
+| `lib/ai/provider.ts` | Vendor-agnostic interface, two model tiers, factory |
+| `lib/ai/provider-openai.ts` | The only vendor-specific file. One line to swap. |
+| `lib/ai/prompts.ts` | One function per feature. 30 tests. |
+| `lib/ai/context.ts` | Reads the business, products and prices fresh per call |
+| `lib/ai/run.ts` | The order that matters: key → cap → call → validate → meter |
+| `lib/ai/usage.ts` | Daily cap, checked *before* spending |
+| `lib/ai/actions.ts` | One server action per feature, each with its schema |
+| `components/ai/ai-panel.tsx` | Shared shell that renders assumptions above output |
+
+### The rule that makes the AI features honest
+
+`aiEnvelopeSchema` requires a non-empty `assumptions` array. A response
+without one is **not shown** — the user gets an error explaining that the
+app refused to display unverifiable advice. That is ADR-4, and it is enforced
+in code rather than trusted to a prompt.
+
+The Copilot is the interesting case: it returns prose, which has nowhere to
+carry a structured assumptions list, so its envelope check fails by
+construction. That is deliberate. A feature that cannot state what it assumed
+does not get to display its output.
 
 ---
 

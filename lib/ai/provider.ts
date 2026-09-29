@@ -92,7 +92,7 @@ export interface AiProvider {
   complete(request: CompletionRequest): Promise<CompletionResult>;
 }
 
-/** Thrown when the provider is unreachable or rate-limits us. */
+/** Thrown when the provider is unreachable or rejects our credentials. */
 export class AiProviderError extends Error {
   constructor(
     message: string,
@@ -103,10 +103,18 @@ export class AiProviderError extends Error {
   }
 }
 
-/** Thrown when the daily per-user cap is exceeded. */
+/** Thrown when the provider rate-limits us, or we hit the daily per-user cap. */
 export class AiRateLimitError extends Error {
-  constructor(readonly retryAfterSeconds: number) {
-    super("Daily AI limit reached");
+  constructor(
+    readonly retryAfterSeconds: number,
+    /** True when it was our own cap rather than the provider's. */
+    readonly isDailyCap = false,
+  ) {
+    super(
+      isDailyCap
+        ? "You have used today's AI allowance"
+        : "The AI provider is busy right now",
+    );
     this.name = "AiRateLimitError";
   }
 }
@@ -154,3 +162,30 @@ You are advising a real business. Follow these rules exactly:
 6. Be specific and actionable. Avoid generic advice that would apply to
    any business.
 `.trim();
+
+/**
+ * The provider factory.
+ *
+ * The only place in the codebase that knows which vendor is in use. Keeping
+ * it here means a test can assert the app still builds and behaves when no
+ * key is configured, which is the state it ships in.
+ */
+let cached: AiProvider | null = null;
+
+export function getAiProvider(): AiProvider {
+  if (cached) return cached;
+
+  // Imported lazily so that a missing key produces a friendly route-level
+  // message rather than a module-load failure at app startup.
+  const { OpenAiCompatibleProvider } = require("@/lib/ai/provider-openai") as {
+    OpenAiCompatibleProvider: new (name?: string) => AiProvider;
+  };
+
+  cached = new OpenAiCompatibleProvider();
+  return cached;
+}
+
+/** Test seam: drop the cached provider so a new env var takes effect. */
+export function resetAiProvider(): void {
+  cached = null;
+}

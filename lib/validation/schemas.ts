@@ -462,8 +462,17 @@ export const orderNumberSchema = z
 export function aiEnvelopeSchema<TContent extends z.ZodType>(content: TContent) {
   return z.object({
     content,
+    /**
+     * Lifted from the provider response OR from inside the generated JSON,
+     * whichever the feature puts it in. Required with no default: a response
+     * that cannot say what it assumed has not earned the right to be shown as
+     * advice (ADR-4).
+     */
     assumptions: z
-      .array(z.string().min(1))
+      // .trim() before .min(1): a whitespace-only string satisfies min(1) on
+      // its length, so `"   "` would otherwise count as a stated assumption.
+      // An empty assumption box that passes validation is worse than none.
+      .array(z.string().trim().min(1, "An assumption cannot be blank"))
       .min(1, "The model must state at least one assumption"),
     warnings: z.array(z.string()),
     model: z.string().min(1),
