@@ -150,6 +150,118 @@ export const createBusinessSchema = z.object({
 export type CreateBusinessInput = z.infer<typeof createBusinessSchema>;
 
 /**
+ * Products.
+ *
+ * One schema serves both create and edit. `id` is absent when creating and
+ * present when editing, so the action branches on its presence rather than
+ * having two near-identical schemas that can drift apart.
+ *
+ * Prices are free text here and become minor units in the action, matching
+ * createBusinessSchema. A user typing "15,000" is the normal case, not an edge
+ * case, and rejecting it at the schema layer would just move the frustration.
+ */
+export const productSchema = z.object({
+  id: z
+    .string()
+    .uuid("That is not a valid product reference")
+    .optional()
+    .or(z.literal("")),
+  name: z
+    .string()
+    .trim()
+    .min(1, "Give the product a name")
+    .max(160, "Keep the name under 160 characters"),
+  description: z
+    .string()
+    .trim()
+    .max(2000, "Keep the description under 2000 characters")
+    .optional()
+    .or(z.literal("")),
+  category: z
+    .string()
+    .trim()
+    .max(120, "Keep the category under 120 characters")
+    .optional()
+    .or(z.literal("")),
+  /** Selling price, typed by a human. Required: products are not free. */
+  price: z.string().trim().min(1, "Enter a selling price").max(40),
+  /** What it costs you. Optional, because many founders do not track this yet. */
+  cost: z.string().trim().max(40).optional().or(z.literal("")),
+  sku: z
+    .string()
+    .trim()
+    .max(60, "Keep the code under 60 characters")
+    .optional()
+    .or(z.literal("")),
+  /** How many you have. Optional: not everything is stock-tracked. */
+  stock: z.string().trim().max(20).optional().or(z.literal("")),
+  /** "on" when ticked, absent when not. */
+  is_active: z.union([z.literal("on"), z.literal("true")]).optional(),
+});
+
+export type ProductInput = z.infer<typeof productSchema>;
+
+/** The customer stages, for the select. Mirrors the DB CHECK constraint. */
+export const CUSTOMER_STAGES = [
+  { value: "lead", label: "Lead", hint: "Heard about you, not yet in touch" },
+  { value: "prospect", label: "Prospect", hint: "Talking to them" },
+  { value: "customer", label: "Customer", hint: "Has bought from you" },
+  { value: "returning", label: "Returning", hint: "Comes back more than once" },
+  { value: "vip", label: "VIP", hint: "Your best customers" },
+] as const;
+
+/**
+ * Customers.
+ *
+ * `email` and `phone` are each optional, but the pair is not: the database has
+ * a CHECK constraint requiring at least one, and a customer nobody can reach is
+ * not a customer. The refine here produces the message; the constraint remains
+ * the enforcement.
+ *
+ * `stage` mirrors the PRD section 6 flow and the DB CHECK constraint.
+ */
+export const customerSchema = z
+  .object({
+    id: z
+      .string()
+      .uuid("That is not a valid customer reference")
+      .optional()
+      .or(z.literal("")),
+    name: z
+      .string()
+      .trim()
+      .min(1, "Enter the customer's name")
+      .max(160, "Keep the name under 160 characters"),
+    email: z
+      .string()
+      .trim()
+      .max(320, "That email is too long")
+      .optional()
+      .or(z.literal("")),
+    /** Typed by a human, normalised to E.164 in the action. */
+    phone: z.string().trim().max(40).optional().or(z.literal("")),
+    location: z
+      .string()
+      .trim()
+      .max(120, "Keep the location under 120 characters")
+      .optional()
+      .or(z.literal("")),
+    stage: z.enum(["lead", "prospect", "customer", "returning", "vip"]).default("lead"),
+    notes: z
+      .string()
+      .trim()
+      .max(2000, "Keep the notes under 2000 characters")
+      .optional()
+      .or(z.literal("")),
+  })
+  .refine((v) => Boolean(v.email) || Boolean(v.phone), {
+    message: "Add a phone number or an email, so you can reach them",
+    path: ["phone"],
+  });
+
+export type CustomerInput = z.infer<typeof customerSchema>;
+
+/**
  * Turn a business name into a URL-safe slug.
  *
  * Kept here rather than in the action so it can be unit tested without a
@@ -166,8 +278,7 @@ export function slugify(input: string): string {
     .replace(/-+$/, "");
 }
 
-/** A cuid-style identifier, e.g. from a shared link. */
-export const shareTokenSchema = z
+/** A cuid-style identifier, e.g. from a shared link. */export const shareTokenSchema = z
   .string()
   .min(16)
   .max(128)

@@ -198,3 +198,48 @@ body {
 .input[aria-invalid="true"] {
   border-color: var(--danger);
 }
+
+/*
+ * Selects and textareas share .input's box. The business form has been using
+ * these class names since it was written but they were never defined here, so
+ * those controls were falling back to unstyled browser defaults while the
+ * text inputs around them were themed.
+ */
+.select,
+.textarea {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 0.625rem;
+  background: var(--surface-2);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 0.875rem;
+}
+.select:focus,
+.textarea:focus {
+  outline: 2px solid var(--brand-soft);
+  border-color: var(--brand);
+  background: var(--surface);
+}
+.select[aria-invalid="true"],
+.textarea[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+.textarea {
+  resize: vertical;
+  min-height: 4.5rem;
+}
+.select {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 1.05rem) calc(50% + 2px),
+    calc(100% - 0.7rem) calc(50% + 2px);
+  background-size:
+    0.35rem 0.35rem,
+    0.35rem 0.35rem;
+  background-repeat: no-repeat;
+  padding-right: 2rem;
+}

@@ -29,7 +29,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
       { href: "/business/new", label: "Create business" },
       { href: "/business/plan", label: "Business plan", soon: true },
       { href: "/business/brand", label: "Brand", soon: true },
-      { href: "/business/products", label: "Products", soon: true },
+      { href: "/business/products", label: "Products" },
       { href: "/business/services", label: "Services", soon: true },
     ],
   },
@@ -43,7 +43,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
   {
     group: "Growth",
     items: [
-      { href: "/customers", label: "Customers", soon: true },
+      { href: "/customers", label: "Customers" },
       { href: "/finance", label: "Finance", soon: true },
       { href: "/analytics", label: "Analytics", soon: true },
       { href: "/tasks", label: "Tasks", soon: true },
