@@ -53,14 +53,7 @@ export default async function LoginPage({
             }
           >
             {next && <input type="hidden" name="next" value={next} />}
-            <Field
-              label="Email"
-              name="email"
-              type="email"
-              required
-              autoComplete="email"
-              defaultValue="owner@qubators.studio"
-            />
+            <Field label="Email" name="email" type="email" required autoComplete="email" />
             <Field label="Password" name="password" type="password" required autoComplete="current-password" />
           </AuthForm>
         )}
