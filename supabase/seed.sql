@@ -157,9 +157,14 @@ begin
     (v_biz, 'SafeNet Security',    'Monthly bandwidth',     'utilities',   120000, 'UGX', current_date -  7);
 
   -- ---- campaign ------------------------------------------------------------
-  -- NOTE: this used to be a nested `do $$` block. Postgres dollar-quoting does
-  -- NOT nest - the inner $$ would have terminated the outer block early and
-  -- produced a syntax error. v_campaign is now declared in the outer DECLARE.
+  -- This was previously a nested do-block. Postgres dollar-quoting does not
+  -- nest: the inner tag would have closed the outer block early and produced
+  -- a syntax error. v_campaign is now declared in the outer DECLARE.
+  --
+  -- Note: do not write the dollar-quote tag inside a comment in here either.
+  -- The parser scans for the closing tag literally and does not know that
+  -- this is a comment, so the block would end early. That is not a
+  -- hypothetical - it is exactly what happened once already.
   if not exists (select 1 from public.campaigns where business_id = v_biz and name = 'Wet season launch') then
     insert into public.campaigns (business_id, name, goal, audience, channel, budget_minor, currency, starts_at, ends_at, status, reach, engagement, leads, conversions, revenue_minor)
     values (v_biz, 'Wet season launch', 'First 100 stockists', 'Urban retailers, Kampala', 'social',

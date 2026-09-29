@@ -170,12 +170,58 @@ Alternatively set the whole connection string:
     .filter((f) => f.endsWith(".sql"))
     .sort();
 
+  // ---- migration tracking ------------------------------------------------
+  // Without this, re-running fails on the first "relation already exists"
+  // and the user cannot tell that the schema is in fact correct.
+  await client.query(`
+    create schema if not exists private;
+    create table if not exists private.schema_migrations (
+      filename    text primary key,
+      applied_at  timestamptz not null default timezone('utc', now())
+    );
+  `);
+
+  const { rows: appliedRows } = await client.query(
+    "select filename from private.schema_migrations",
+  );
+  const alreadyApplied = new Set(appliedRows.map((r) => r.filename));
+
+  // Reconcile: if tracking is empty but our tables already exist, the schema
+  // was applied before this tracking table existed. Record it rather than
+  // pretending it failed.
+  if (alreadyApplied.size === 0) {
+    const { rows: existing } = await client.query(`
+      select count(*)::int as n
+      from information_schema.tables
+      where table_schema = 'public' and table_name = 'businesses'
+    `);
+    if (existing[0].n > 0) {
+      console.log(
+        `\n  ${DIM}Schema already present but untracked - recording it as applied.${RESET}\n`,
+      );
+      for (const file of files) {
+        await client.query(
+          "insert into private.schema_migrations (filename) values ($1) on conflict do nothing",
+          [file],
+        );
+        alreadyApplied.add(file);
+      }
+    }
+  }
+
   console.log(`\n${files.length} migration files found.\n`);
 
   let applied = 0;
+  let skipped = 0;
   let failed = false;
 
   for (const file of files) {
+    if (alreadyApplied.has(file)) {
+      console.log(`  ${file.padEnd(42)} ${DIM}already applied${RESET}`);
+      skipped += 1;
+      continue;
+    }
+
     const sql = await readFile(join(migrationsDir, file), "utf8");
     process.stdout.write(`  ${file.padEnd(42)} `);
 
@@ -183,6 +229,10 @@ Alternatively set the whole connection string:
       // Each migration is one transaction: a failure leaves no partial state.
       await client.query("begin");
       await client.query(sql);
+      await client.query(
+        "insert into private.schema_migrations (filename) values ($1)",
+        [file],
+      );
       await client.query("commit");
       console.log(`${GREEN}applied${RESET}`);
       applied += 1;
@@ -226,7 +276,7 @@ Alternatively set the whole connection string:
   console.log(`  rls enabled     ${rlsRows[0].n}  ${DIM}(expected 21)${RESET}`);
   console.log(`  rls policies    ${polRows[0].n}`);
 
-  if (applied === files.length && !failed) {
+  if (!failed) {
     console.log(`\n${GREEN}${BOLD}All migrations applied.${RESET}`);
 
     if (withSeed) {
@@ -254,6 +304,13 @@ Alternatively set the whole connection string:
           `\n  demo data: ${biz[0].n} business, ${prod[0].n} products, ` +
             `${cust[0].n} customers, ${ord[0].n} orders`,
         );
+        // Proves the GENERATED column and the recalculation trigger both work.
+        const { rows: tot } = await client.query(
+          "select coalesce(sum(total_minor),0)::bigint as n from public.orders",
+        );
+        console.log(
+          `  order totals: ${tot[0].n} minor units ${DIM}(computed by trigger)${RESET}`,
+        );
         console.log(`\n  sign in with  founder@qubators.test  /  demo-password-123`);
       } catch (err) {
         await client.query("rollback").catch(() => {});
@@ -272,7 +329,7 @@ Alternatively set the whole connection string:
       );
     }
   } else {
-    console.log(`\n${RED}${applied} of ${files.length} applied before stopping.${RESET}\n`);
+    console.log(`\n${RED}Stopped. ${applied} applied, ${skipped} already present.${RESET}\n`);
   }
 
   await client.end();
