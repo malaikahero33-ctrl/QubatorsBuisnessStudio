@@ -199,23 +199,31 @@ function EmptyState() {
     <main className="mx-auto max-w-2xl px-6 py-16">
       <h1 className="text-2xl font-bold tracking-tight">No business yet</h1>
       <p className="mt-2 text-muted">
-        You are signed in, but you have not created a business. That is the first step.
+        You are signed in. The first thing to do is say what you are building.
       </p>
-      <div className="mt-6 rounded-xl border border-dashed border-border bg-surface p-6">
+
+      <div className="mt-6 rounded-xl border border-border bg-surface p-6">
         <h2 className="text-sm font-bold">What happens next</h2>
         <ol className="mt-3 space-y-2 text-sm text-muted">
-          <li>1. Create your business — name, what you do, where you are</li>
-          <li>2. Describe your idea and get a structured analysis</li>
-          <li>3. Build a brand you can print</li>
-          <li>4. Add products, then customers, then orders</li>
+          <li>
+            <b className="text-foreground">1.</b> Create your business — name, what you do, where
+            you are
+          </li>
+          <li>
+            <b className="text-foreground">2.</b> Describe your idea and get a structured analysis
+          </li>
+          <li>
+            <b className="text-foreground">3.</b> Build a brand you can print
+          </li>
+          <li>
+            <b className="text-foreground">4.</b> Add products, then customers, then orders
+          </li>
         </ol>
-        <span className="btn btn-primary mt-5 cursor-not-allowed opacity-60">
+        <Link href="/business/new" className="btn btn-primary mt-5">
           Create your business
-        </span>
-        <p className="mt-2 text-xs text-muted">
-          Business creation is the next module to be built.
-        </p>
+        </Link>
       </div>
+
       <Link href="/" className="mt-6 inline-block text-sm text-brand underline">
         Back to the home page
       </Link>

@@ -83,13 +83,95 @@ export const signInSchema = z.object({
 
 export type SignInInput = z.infer<typeof signInSchema>;
 
+/** The lifecycle stage of a business. Mirrors the DB CHECK constraint. */
+export const BUSINESS_STAGES = [
+  { value: "idea", label: "Just an idea", hint: "Nothing built yet" },
+  { value: "planning", label: "Planning", hint: "Working out the details" },
+  { value: "branding", label: "Building the brand", hint: "Name, logo, colours" },
+  { value: "launched", label: "Launched", hint: "Trading" },
+  { value: "growing", label: "Growing", hint: "Scaling up" },
+] as const;
+
+/**
+ * Business creation.
+ *
+ * The price range is two independent optional fields rather than a pair,
+ * so a half-filled range is still valid - the user may know only one end.
+ * The ordering rule lives in the database CHECK constraint, which cannot be
+ * bypassed by a direct API call.
+ */
+export const createBusinessSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(2, "Give your business a name")
+    .max(120, "That name is too long"),
+  industry: z
+    .string()
+    .trim()
+    .max(120, "Keep it under 120 characters")
+    .optional()
+    .or(z.literal("")),
+  location: z
+    .string()
+    .trim()
+    .max(120, "Keep it under 120 characters")
+    .optional()
+    .or(z.literal("")),
+  currency: currencySchema.default(DEFAULT_CURRENCY),
+  stage: z
+    .enum(["idea", "planning", "branding", "launched", "growing"])
+    .default("idea"),
+  target_customer: z
+    .string()
+    .trim()
+    .max(400, "Keep it under 400 characters")
+    .optional()
+    .or(z.literal("")),
+  goals: z
+    .string()
+    .trim()
+    .max(400, "Keep it under 400 characters")
+    .optional()
+    .or(z.literal("")),
+  // Free-text price entry, converted to minor units in the server action.
+  price_min: z
+    .string()
+    .trim()
+    .optional()
+    .or(z.literal("")),
+  price_max: z
+    .string()
+    .trim()
+    .optional()
+    .or(z.literal("")),
+});
+
+export type CreateBusinessInput = z.infer<typeof createBusinessSchema>;
+
+/**
+ * Turn a business name into a URL-safe slug.
+ *
+ * Kept here rather than in the action so it can be unit tested without a
+ * database, and so the rule lives in exactly one place.
+ */
+export function slugify(input: string): string {
+  return input
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "") // strip accents
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80)
+    .replace(/-+$/, "");
+}
+
 /** A cuid-style identifier, e.g. from a shared link. */
 export const shareTokenSchema = z
   .string()
   .min(16)
   .max(128)
   .regex(/^[A-Za-z0-9_-]+$/, "Invalid share token");
-
 /** Human-facing order number, e.g. QB-1001. */
 export const orderNumberSchema = z
   .string()
