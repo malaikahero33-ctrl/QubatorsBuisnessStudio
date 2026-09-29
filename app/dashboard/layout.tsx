@@ -46,7 +46,8 @@ const NAV: { group: string; items: NavItem[] }[] = [
     items: [
       { href: "/customers", label: "Customers" },
       { href: "/orders", label: "Orders" },
-      { href: "/finance", label: "Finance", soon: true },
+      { href: "/finance", label: "Finance" },
+      { href: "/settings", label: "Settings" },
       { href: "/analytics", label: "Analytics", soon: true },
       { href: "/tasks", label: "Tasks", soon: true },
     ],

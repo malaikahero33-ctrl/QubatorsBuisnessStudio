@@ -196,6 +196,124 @@ export const createOrderSchema = z.object({
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
 
 /**
+ * Recording money in or money out.
+ *
+ * `amount_minor` must be positive. Direction is carried by `type`, never by
+ * the sign — a negative income row is not a thing, and allowing one would let
+ * a total be reduced by an amount the schema never validated as an expense.
+ */
+export const createTransactionSchema = z.object({
+  type: z.enum(["income", "expense"], { error: "Choose money in or money out" }),
+  amount_minor: z
+    .number({ error: "Enter an amount" })
+    .int("Amounts are whole numbers, no decimals")
+    .positive("Amount must be more than zero"),
+  category: z.string().trim().max(80).optional().or(z.literal("")),
+  description: z.string().trim().max(300).optional().or(z.literal("")),
+  occurred_on: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Use the date picker"),
+  customer_id: z.string().uuid("Not a valid customer").optional().or(z.literal("")),
+  order_id: z.string().uuid("Not a valid order").optional().or(z.literal("")),
+});
+
+export type CreateTransactionInput = z.infer<typeof createTransactionSchema>;
+
+/**
+ * Editing an existing business.
+ *
+ * `currency` is deliberately absent from the editable set even though the
+ * column exists. Money is already stored against this business: every
+ * product price, order total and transaction carries the currency it was
+ * entered in. Changing the business's currency afterwards would relabel all
+ * of it without converting any of it, which is the same class of bug as
+ * storing a symbol in a money column. Converting is a separate, deliberate
+ * operation — and open question 4 in docs/DECISIONS.md.
+ */
+export const updateBusinessSchema = z.object({
+  id: z.string().uuid("Not a valid business"),
+  name: z
+    .string()
+    .trim()
+    .min(2, "Give the business a name of at least 2 characters")
+    .max(120, "Keep the name under 120 characters"),
+  industry: z.string().trim().max(120).optional().or(z.literal("")),
+  location: z.string().trim().max(160).optional().or(z.literal("")),
+  stage: z.enum(["idea", "planning", "branding", "launched", "growing"]),
+  target_customer: z.string().trim().max(2000).optional().or(z.literal("")),
+  brand_personality: z.string().trim().max(1000).optional().or(z.literal("")),
+  goals: z.string().trim().max(2000).optional().or(z.literal("")),
+});
+
+export type UpdateBusinessInput = z.infer<typeof updateBusinessSchema>;
+
+/**
+ * The account holder's own details.
+ *
+ * `phone` is validated as E.164 by the database constraint, so it is
+ * normalised here rather than left to fail on insert with a constraint error
+ * the user cannot act on.
+ */
+export const updateProfileSchema = z.object({
+  full_name: z
+    .string()
+    .trim()
+    .min(2, "Tell us your name")
+    .max(120, "Keep the name under 120 characters"),
+  phone: z.string().trim().max(20).optional().or(z.literal("")),
+  country_code: z
+    .string()
+    .trim()
+    .regex(/^([A-Z]{2})?$/, "Use a two-letter country code, like UG")
+    .optional()
+    .or(z.literal("")),
+});
+
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+
+/** Notification and onboarding preferences. */
+export const updateSettingsSchema = z.object({
+  business_id: z.string().uuid("Not a valid business"),
+  notify_new_order: z.boolean(),
+  notify_consultation: z.boolean(),
+  weekly_digest: z.boolean(),
+  onboarding_step: z.enum([
+    "create_business",
+    "describe_idea",
+    "generate_plan",
+    "build_brand",
+    "add_product",
+    "first_customer",
+    "done",
+  ]),
+});
+
+export type UpdateSettingsInput = z.infer<typeof updateSettingsSchema>;
+
+/**
+ * Turn a typed phone number into E.164, assuming Uganda unless told otherwise.
+ *
+ * A Ugandan local number like 0772 123 456 becomes +256772123456. Anything
+ * already starting with + is passed through untouched.
+ */
+export function normalisePhone(input: string, countryCode = "256"): string | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith("+")) return /^\+[1-9]\d{6,14}$/.test(trimmed) ? trimmed : null;
+
+  // Drop spaces, dashes, brackets and dots: cosmetic separators.
+  const digits = trimmed.replace(/[\s\-().]/g, "");
+  if (!/^\d+$/.test(digits)) return null;
+
+  // 0 is the local trunk prefix. 256 is Uganda's country code.
+  const local = digits.startsWith("0") ? digits.slice(1) : digits;
+  const cc = countryCode.replace(/\D/g, "") || "256";
+  const full = `+${cc}${local}`;
+  return /^\+[1-9]\d{6,14}$/.test(full) ? full : null;
+}
+
+/**
  * Products.
  *
  * One schema serves both create and edit. `id` is absent when creating and

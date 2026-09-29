@@ -19,16 +19,21 @@ export function Field({
   name,
   hint,
   error,
+  className,
   children,
 }: {
   label: string;
   name: string;
   hint?: string;
   error?: string;
+  /** Applied to the wrapper, so a narrow field can live in a wide grid. */
+  className?: string;
   children: React.ReactNode;
 }) {
   return (
-    <label className="block">
+    // "block" is always kept: a label is inline by default, which breaks any
+    // grid or flex layout it is dropped into.
+    <label className={className ? `block ${className}` : "block"}>
       <span className="mb-1.5 block text-xs font-semibold text-muted">{label}</span>
       {children}
       {error ? (

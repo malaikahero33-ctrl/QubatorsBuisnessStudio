@@ -24,6 +24,9 @@ export type CurrentBusiness = {
   stage: string | null;
   industry: string | null;
   location: string | null;
+  target_customer: string | null;
+  brand_personality: string | null;
+  goals: string | null;
 };
 
 export async function getCurrentBusiness(): Promise<CurrentBusiness | null> {
@@ -31,7 +34,7 @@ export async function getCurrentBusiness(): Promise<CurrentBusiness | null> {
 
   const { data: businesses, error } = await supabase
     .from("businesses")
-    .select("id, name, currency, stage, industry, location")
+    .select("id, name, currency, stage, industry, location, target_customer, brand_personality, goals")
     .order("created_at", { ascending: true })
     .limit(1);
 
@@ -51,5 +54,8 @@ export async function getCurrentBusiness(): Promise<CurrentBusiness | null> {
     stage: business.stage ?? null,
     industry: business.industry ?? null,
     location: business.location ?? null,
+    target_customer: business.target_customer ?? null,
+    brand_personality: business.brand_personality ?? null,
+    goals: business.goals ?? null,
   };
 }
