@@ -248,6 +248,72 @@ is explicit rather than inferred from a hand-written number.
 
 ---
 
+## ADR-13: Auth users are created through the auth API, never with SQL
+
+**Status:** Accepted · 29 Sep 2026
+
+`supabase/seed.sql` originally created the demo login by inserting directly into
+`auth.users`. That produced a user that existed, was email-confirmed, and had a valid
+bcrypt hash — and could not sign in. GoTrue answered every attempt, right password or
+wrong, with `500 unexpected_failure: "Database error querying schema"`. The app showed
+this to the founder as a generic "incorrect" message on a correct password.
+
+Two distinct faults, both from hand-writing rows into a table that Supabase owns:
+
+1. **No `auth.identities` row.** Supabase records a login in two tables. Inserting only
+   `auth.users` leaves GoTrue unable to resolve the identity.
+2. **bcrypt cost 6.** `gen_salt('bf')` defaults to cost 6. GoTrue expects cost 10 and
+   rejects the cheaper hash.
+
+The row was worse than inert: while it existed, *every* lookup against `auth.users`
+failed, including a brand-new signup from a different address. One malformed row broke
+auth for the whole project.
+
+**Decision:** never write to `auth.users` from SQL. `scripts/repair-demo-user.mjs` creates
+the account through `POST /auth/v1/signup` and the seed only attaches business data to a
+user that already exists. Related: `auth.identities.email` is `GENERATED ALWAYS` on
+current Supabase, so it cannot be inserted into directly and is derived from
+`identity_data`.
+
+**Why it matters:** `auth.*` is Supabase's schema, not ours. Its invariants are not
+documented in a way that hand-written inserts can satisfy reliably.
+
+**Revisit if:** Supabase publishes a supported seed path for `auth.users`. Until then, use
+the API.
+
+---
+
+## ADR-14: Migrations must GRANT explicitly on the API roles
+
+**Status:** Accepted · 29 Sep 2026
+
+Migrations 0001–0003 created 21 tables and attached 42 RLS policies but never granted
+anything to `anon`, `authenticated` or `service_role`. Supabase's automatic grants only
+apply to objects created by the platform's own role, so tables created by a direct
+connection got no privileges.
+
+Every read and write returned `403 permission denied for table businesses`, with
+Postgres suggesting the fix. **RLS was never consulted** — a missing table privilege is
+checked before row security, so the entire tenant-isolation model was inert. The pages
+still returned 200, because the failure happened on the data fetch, not the render.
+
+**Decision:** migration `0004_grants.sql` grants `select, insert, update, delete` on all
+public tables to `authenticated`, plus `execute` on functions and `usage` on the schema.
+Crucially it also sets `ALTER DEFAULT PRIVILEGES`, so tables added by migration 0005 and
+later are granted automatically and this cannot silently regress again.
+
+`anon` is granted nothing on purpose: all public tables hold tenant data, and refusing
+signed-out requests in the database is safer than relying on the application layer not
+being bypassed.
+
+**Why it matters:** a green build, a 200 response and 42 RLS policies can all coexist with
+total data loss at runtime. Permissions are part of the schema and belong in the same
+transaction as the tables.
+
+**Revisit if:** never. This is not a preference; a missing GRANT is a bug.
+
+---
+
 ## Open questions
 
 | # | Question | Blocks | Owner |

@@ -31,6 +31,31 @@ declare
 begin
   select id into demo_id from auth.users where email = demo_email;
 
+  -- GoTrue stores a login in TWO tables: auth.users and auth.identities.
+  -- Inserting only auth.users produces a user that exists but cannot sign
+  -- in - GoTrue fails with a 500 "Database error querying schema" rather
+  -- than a clean "invalid credentials". This identity row is what makes
+  -- the email/password login resolvable.
+  -- Note: auth.identities.email is a GENERATED ALWAYS column on current
+  -- Supabase, derived from identity_data. Supplying it is an error, so it
+  -- is omitted here - the value comes from identity_data below.
+  if exists (select 1 from auth.users where id = demo_id)
+     and not exists (select 1 from auth.identities where user_id = demo_id) then
+    insert into auth.identities (
+      user_id, provider, provider_id, identity_data,
+      last_sign_in_at, created_at, updated_at
+    ) values (
+      demo_id, 'email', demo_id,
+      jsonb_build_object(
+        'sub', demo_id::text,
+        'email', demo_email,
+        'email_verified', true,
+        'phone_verified', false
+      ),
+      timezone('utc', now()), timezone('utc', now()), timezone('utc', now())
+    );
+  end if;
+
   if demo_id is null then
     insert into auth.users (
       instance_id, id, aud, role, email, encrypted_password,
@@ -39,7 +64,11 @@ begin
       '00000000-0000-0000-0000-000000000000',
       gen_random_uuid(),
       'authenticated', 'authenticated', demo_email,
-      crypt('demo-password-123', gen_salt('bf')),
+      -- bcrypt cost 10, which is what Supabase's GoTrue requires.
+    -- gen_salt('bf') alone defaults to cost 6, and GoTrue then fails sign-in
+    -- with a 500 "Database error querying schema" rather than rejecting the
+    -- password cleanly. Always pass the cost explicitly.
+    crypt('demo-password-123', gen_salt('bf', 10)),
       timezone('utc', now()),
       '{"provider":"email","providers":["email"]}',
       '{"full_name":"Amina K"}',

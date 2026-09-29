@@ -1,7 +1,44 @@
 # Where we stopped — 29 September 2026
 
-Everything below is committed and pushed. Nothing is in progress or half-finished.
-Resume by running one command.
+**Sign-in works and the dashboard shows real data.** Both were verified by actually
+signing in and loading the page, not by reading the code.
+
+---
+
+## Sign in
+
+```
+http://localhost:3000
+
+founder@qubators.test  /  demo-password-123
+```
+
+The dashboard shows Sunrise Foods in Kampala: USh 60,000,000 revenue, USh 3,150,000
+spent, USh 56,850,000 profit, 3 products, 4 customers and 2 orders. All of it is read
+live from Postgres through row-level security.
+
+---
+
+## To run it yourself
+
+```powershell
+cd C:\dev\QubatorsBuisnessStudio
+npm.cmd run build
+npm.cmd start
+```
+
+Then open http://localhost:3000.
+
+Use `npm.cmd`, not `npm`. PowerShell's execution policy blocks `npm.ps1`, which is
+what the bare `npm` resolves to. If you would rather not type `.cmd` every time, run
+this once:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+```
+
+Use production mode (`build` then `start`) for real work. `npm run dev` recompiles on
+first load and takes 10–60 seconds per cold route on this machine.
 
 ---
 
@@ -10,104 +47,107 @@ Resume by running one command.
 | | |
 |---|---|
 | App runs | ✅ http://localhost:3000 |
-| Authentication | ✅ working against the live Supabase project |
-| Code | ✅ 11 commits, synced to GitHub |
-| Database schema | ⬜ **not yet created** — the only thing left |
-
-**A user can sign up and sign in today.** The dashboard shows nothing because the
-21 tables do not exist yet.
+| Sign in | ✅ verified in a real browser |
+| Dashboard | ✅ renders live data |
+| Database | ✅ 21 tables, 42 RLS policies, 39 functions, live |
+| Access check | ✅ 14/14 (`npm.cmd run db:check-access`) |
+| Unit tests | ✅ 36 (`npm.cmd test`) |
+| Business creation | ✅ `/business/new` |
+| Not built yet | products, customers, orders, finance, AI |
 
 ---
 
-## To finish: one command
+## Two bugs that stopped sign-in, and what fixed them
 
-Set a short database password in Supabase first:
+Both were in the database rather than the app, and both had the same shape: a correct
+password reported as "incorrect". Worth knowing because neither would have been caught
+by a green build or a page that returns 200.
 
-**Project → Settings → Database → set password to something you can type, e.g. `qubators2026`**
+**1. The tables were never granted to the API roles.** Migrations created 21 tables and
+42 RLS policies but no `GRANT`. Postgres answered every read with
+`403 permission denied for table businesses`. Row-level security is checked *after* table
+privileges, so none of the 42 policies were ever consulted — the tenant isolation was
+completely inert while appearing to be configured.
 
-Then in PowerShell:
+Fixed by `supabase/migrations/20260928000004_grants.sql`, which also sets
+`ALTER DEFAULT PRIVILEGES` so this cannot silently come back with the next migration.
+
+**2. The demo user was created with SQL and was unusable.** Supabase stores a login in
+two tables, and the seed wrote only one. It also hashed the password at bcrypt cost 6
+where GoTrue expects 10. The result was `500 "Database error querying schema"` for every
+sign-in attempt, right password or wrong. Worse, that one broken row made *every* user
+lookup fail, including brand-new signups.
+
+Fixed by creating the account through Supabase's own API — see ADR-13.
+
+Both are written up in `docs/DECISIONS.md` as ADR-14 and ADR-13.
+
+---
+
+## Checking access later
 
 ```powershell
 cd C:\dev\QubatorsBuisnessStudio
-npm.cmd run db:seed
+$env:SUPABASE_DB_PASSWORD = "<your database password>"
+npm.cmd run db:check-access
 ```
 
-It asks for the password. Type it. That applies all three migrations, then the
-demo data, and prints the resulting table counts.
-
-If it fails, the output names the exact file and error. Paste that back.
+Signs in as the demo user, reads every tenant table, confirms a signed-out request is
+refused, and checks the grants. Set `SUPABASE_DB_PASSWORD` in the same PowerShell
+session, or the grant checks are skipped and it says so.
 
 ---
 
-## Why a script instead of the SQL editor
+## If sign-in ever breaks again
 
-The Supabase SQL Editor needed the SQL pasted by hand, and pasting does not work
-in this environment. The Supabase CLI needs an interactive terminal. So
-`scripts/apply-migrations.mjs` connects to Postgres directly with `pg`:
+The error the app shows is not necessarily the cause. Read the actual response:
 
-- prompts for the password, so no file needs editing by hand
-- each migration runs in its own transaction, so a failure rolls back cleanly
-  rather than leaving half a schema
-- prints real table, function and RLS policy counts instead of trusting the
-  exit code
-- `--dry-run` tests the connection only
-- `--seed` loads demo data
+```powershell
+# wrong password should be a clean 400, not a 500
+Invoke-RestMethod -Uri "https://dptubikzfvhtmgjvptmt.supabase.co/auth/v1/token?grant_type=password" `
+  -Method Post -Headers @{ apikey = "<key from .env.local>"; "Content-Type" = "application/json" } `
+  -Body '{"email":"founder@qubators.test","password":"demo-password-123"}'
+```
 
-It has been verified as far as authentication: the connection string builds
-correctly and reaches `password authentication failed for user postgres`, so the
-host and username are right. **It has not yet run against a live database.**
+A `500 Database error querying schema` means the database is broken, not the password.
+A `400 Invalid login credentials` means the password really is wrong.
 
 ---
 
-## Connection details
+## If the demo account is lost
 
-Configured in `.env.local` (git-ignored, never committed):
-
-```
-NEXT_PUBLIC_SUPABASE_URL="https://dptubikzfvhtmgjvptmt.supabase.co"
-NEXT_PUBLIC_SUPABASE_ANON_KEY="sb_publishable_…"
+```powershell
+npm.cmd run db:repair-demo-user
 ```
 
-The publishable key was verified: `/auth/v1/health` returns `200`. It is designed
-to be public — it ships in browser code and row-level security is what protects
-the data.
-
-**Still needed:** `SUPABASE_DB_PASSWORD` — only for the migration script, never
-by the running app.
+Deletes the demo business and every leftover user, signs up a fresh account through the
+API, and then re-run `npm.cmd run db:seed` to rebuild the data around it. Only demo
+data is destroyed.
 
 ---
 
-## Sign in once seeded
+## Two things to do before this goes anywhere public
 
-```
-founder@qubators.test  /  demo-password-123
-```
-
-If seeding fails on `auth.users` permissions, create that user in the dashboard
-(Authentication → Users → Add user, tick **Auto Confirm User**) and re-run. The
-seed finds the existing user and skips the insert.
+1. **Rotate the database password.** It is in this conversation's history.
+2. **Turn "Confirm email" back on** in Supabase → Authentication → Providers. It is
+   currently off so that signups work without a working mail sender. With it off,
+   anybody can sign in as an unverified address.
 
 ---
 
 ## The open questions from DECISIONS.md
 
-Still genuinely undecided, and none of them block the database:
+None of these block building. All of them are yours to decide.
 
-1. LLM provider and monthly budget ceiling — blocks Phase 3
-2. Whether the licence is MIT (a placeholder file exists, flagged as unconfirmed)
+1. LLM provider and monthly budget ceiling — blocks the AI features
+2. Whether the licence is MIT (a placeholder exists, flagged as unconfirmed)
 3. Whether registration is open at launch or invite-only
 4. Free-tier limits: AI calls per month, businesses per user
 
 ---
 
-## Note on the short database password
-
-A simple password is acceptable for local development only. Change it before any
-public deployment.
-
----
-
 ## Next build step
 
-**Business creation** — the second item in the PRD's MVP acceptance criteria, and
-the only thing standing between a new account and an empty dashboard.
+**Products and customers** — the two lists a founder touches daily, and the first place
+the AI has to write something the user then edits. The database tables and RLS policies
+are already live, so this is pages and server actions against tables that exist.
