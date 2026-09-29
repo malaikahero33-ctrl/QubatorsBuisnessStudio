@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AuthCard, AuthForm, Field, SetupNotice } from "@/components/auth/auth-form";
 import { signInAction } from "@/lib/auth/actions";
 import { isSupabaseConfigured, missingSupabaseVars } from "@/lib/config";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export const metadata = { title: "Sign in" };
 
@@ -15,6 +16,9 @@ export default async function LoginPage({
 
   return (
     <main className="grid min-h-screen place-items-center px-6 py-12">
+      <div className="absolute right-4 top-4">
+        <ThemeToggle />
+      </div>
       <AuthCard title="Welcome back" subtitle="Sign in to your workspace.">
         {registered && (
           <p className="mb-4 rounded-lg border border-success/40 bg-success/10 px-3 py-2 text-sm text-success">

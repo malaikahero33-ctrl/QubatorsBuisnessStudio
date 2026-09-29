@@ -50,13 +50,15 @@ export function ProductsManager({
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Products</h1>
-          <p className="mt-1 text-sm text-muted">
-            Everything you sell. Prices are in {currency}.
-          </p>
-        </div>
+      {/*
+        The page owns the <h1>. Repeating it here produced two h1s and a
+        duplicated title on screen - caught in a screenshot, not by any
+        automated check. This is a toolbar only.
+      */}
+      <header className="flex flex-wrap items-center justify-between gap-4">
+        <p className="text-sm text-muted">
+          {active.length} active · prices in {currency}
+        </p>
         {!adding && !editing && (
           <button
             type="button"

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { signOutAction } from "@/lib/auth/actions";
 import { isSupabaseConfigured } from "@/lib/config";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 /**
  * Dashboard navigation, following PRD section 8.
@@ -110,11 +111,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
         <div className="border-t border-border pt-3">
           <p className="truncate px-2 text-xs text-muted">{user.email}</p>
-          <form action={signOutAction} className="mt-2 px-2">
-            <button type="submit" className="text-xs font-semibold text-muted hover:text-foreground">
-              Sign out
-            </button>
-          </form>
+          <div className="mt-2 flex items-center justify-between gap-2 px-2">
+            <ThemeToggle />
+            <form action={signOutAction}>
+              <button type="submit" className="text-xs font-semibold text-muted hover:text-foreground">
+                Sign out
+              </button>
+            </form>
+          </div>
         </div>
       </aside>
 
@@ -126,11 +130,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
           </span>
           <span className="text-sm font-bold">Qubators</span>
         </Link>
-        <form action={signOutAction}>
-          <button type="submit" className="text-xs font-semibold text-muted">
-            Sign out
-          </button>
-        </form>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <form action={signOutAction}>
+            <button type="submit" className="text-xs font-semibold text-muted">
+              Sign out
+            </button>
+          </form>
+        </div>
       </div>
 
       <div className="min-w-0">{children}</div>

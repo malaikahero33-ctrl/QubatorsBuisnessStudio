@@ -39,8 +39,32 @@
   color-scheme: light;
 }
 
+/*
+ * Dark theme.
+ *
+ * Two selectors, deliberately:
+ *   :root[data-theme="dark"]        the user chose dark
+ *   :not([data-theme="light"])     the user chose "system" and the OS is dark
+ *
+ * Only one of them can match at a time, so a user who explicitly picks light
+ * is never overridden by an OS that prefers dark.
+ */
+:root[data-theme="dark"] {
+  --background: #0b0c17;
+  --surface: #14162a;
+  --surface-2: #1a1d33;
+  --surface-3: #232744;
+  --border: #262a45;
+  --foreground: #eef0fb;
+  --muted: #9499b8;
+  --brand-soft: rgb(109 74 255 / 0.22);
+  --brand-ink: #c3b0ff;
+
+  color-scheme: dark;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --background: #0b0c17;
     --surface: #14162a;
     --surface-2: #1a1d33;
