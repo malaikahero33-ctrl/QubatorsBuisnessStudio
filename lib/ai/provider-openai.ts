@@ -217,11 +217,21 @@ export class OpenAiCompatibleProvider implements AiProvider {
     const env = tier === "fast" ? process.env.AI_MODEL_FAST : process.env.AI_MODEL_QUALITY;
     if (env) return env;
 
-    // Defaults per provider, because a Gemini model name on an OpenAI endpoint
-    // is a confusing 404 rather than a useful message.
+    /**
+     * Defaults per provider.
+     *
+     * Groq is first-class rather than a copy of OpenAI's list, because its
+     * model names are different and a wrong name is a 404 that reads as a
+     * config error. `fast` uses the 8B model and `quality` the 70B: Groq
+     * serves both so cheaply that tiering is about answer quality for the
+     * long generations (business plan, brand) rather than cost.
+     *
+     * llama-3.1-8b-instant is the fast default because it is the cheapest
+     * model on Groq and handles the short chat-style calls fine.
+     */
     const defaults: Record<string, Record<ModelTier, string>> = {
       openai: { fast: "gpt-4o-mini", quality: "gpt-4o" },
-      groq: { fast: "llama-3.3-70b-versatile", quality: "llama-3.3-70b-versatile" },
+      groq: { fast: "llama-3.1-8b-instant", quality: "llama-3.3-70b-versatile" },
       together: { fast: "meta-llama/Llama-3.3-70B-Instruct-Turbo", quality: "meta-llama/Llama-3.3-70B-Instruct-Turbo" },
       mistral: { fast: "mistral-small-latest", quality: "mistral-large-latest" },
       gemini: { fast: "gemini-2.0-flash", quality: "gemini-2.0-pro" },

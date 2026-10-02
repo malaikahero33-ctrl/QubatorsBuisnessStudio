@@ -384,11 +384,73 @@ called from — and its tests keep their value.
 
 ---
 
+## ADR-18: Groq is the launch AI provider
+
+**Status:** Accepted · 2 Oct 2026
+
+`AI_PROVIDER="groq"`, `llama-3.1-8b-instant` for the fast tier and
+`llama-3.3-70b-versatile` for the quality tier.
+
+Chosen over OpenAI for one decisive reason: **speed on a bad connection.** The
+target user is running this on a phone in Uganda, and a model that takes 30
+seconds to answer is a model that gets abandoned. Groq serves these models on
+their own inference hardware, and the difference is not subtle.
+
+Cost matters too. Groq's free tier is generous enough to cover development and
+a small pilot, which means the budget question does not have to be answered
+before the AI features are usable at all.
+
+**Decision:** Groq for the launch. The provider is OpenAI-compatible, so the
+vendor is one environment variable and one line in the per-provider defaults
+table — not a code change. Switching to OpenAI later, if Groq's free tier
+runs out or a model proves inadequate, touches nothing else.
+
+**Model tiers.** `fast` is the 8B model because it handles the Copilot and
+marketing-copy calls, which are short and structured. `quality` is the 70B
+model for the business plan and brand kit, which are long documents where
+quality is the whole point. On Groq the cost difference is small enough that
+tiering is about answer quality, not about saving.
+
+**Still open:** the actual monthly spend ceiling. `estimated_cost_micros` is
+written as 0 in `ai_usage` because a per-token rate has not been agreed, and a
+wrong rate produces a confidently wrong total. See ADR-19.
+
+**Revisit if:** Groq's free tier is exhausted, or the 70B model produces plans
+that are too generic for African small businesses — in which case the fix is
+probably prompt refinement before it is a vendor change.
+
+---
+
+## ADR-19: AI cost is recorded as zero, not estimated
+
+**Status:** Accepted · 2 Oct 2026
+
+`ai_usage.estimated_cost_micros` is written as `0` on every call.
+
+A cost estimate needs a rate table. There is none: the provider was chosen on
+2 October and the figures have not been reconciled against actual billing.
+Guessing a rate produces a number that looks authoritative and is wrong, and a
+wrong cost figure is worse than an absent one because someone will budget from
+it.
+
+**Decision:** count the calls, record the tokens, do not convert to money yet.
+`getTodayUsage` counts rows, so the per-user cap works correctly and is not
+affected. Only the money figure is deferred.
+
+**What has to happen:** once Groq billing has been observed for a real month,
+add the rate to `.env.example` and make the one line in `recordUsage` that
+multiplies tokens by rate. Nothing else changes.
+
+**Revisit if:** the AI budget needs reporting, or usage patterns look like they
+could exceed the tier limits.
+
+---
+
 ## Open questions
 
 | # | Question | Blocks | Owner |
 |---|---|---|---|
-| 1 | LLM provider and budget ceiling | **the last 5 MVP items** | — |
+| 1 | LLM provider and budget ceiling | **partly answered** — Groq chosen, see ADR-18. Spend ceiling still open | — |
 | 2 | Supabase project created? | **resolved** — ref `dptubikzfvhtmgjvptmt`, 21 tables live | done |
 | 3 | Domain owned, for ZeptoMail sender verification? | Phase 5 | — |
 | 4 | Licence — MIT assumed, unconfirmed | before any public release | — |
