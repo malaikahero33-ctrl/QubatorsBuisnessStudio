@@ -66,6 +66,21 @@ function baseUrl(): string {
 }
 
 /**
+ * The endpoint, named in error messages.
+ *
+ * Unlike baseUrl() this never throws. By the time an error message is being
+ * built the configuration is already the thing that went wrong, and throwing
+ * from inside the error path replaces a clear explanation with a stack trace.
+ */
+function currentBase(): string {
+  const provider = (process.env.AI_PROVIDER ?? "openai").toLowerCase();
+  if (provider === "openai_compatible") {
+    return process.env.AI_BASE_URL || "the configured AI_BASE_URL (which is not set)";
+  }
+  return BASES[provider] ?? `an unknown provider "${provider}"`;
+}
+
+/**
  * Turn a provider error into something actionable.
  *
  * The distinction that matters most here is 401 versus 429: a 401 means the
@@ -77,9 +92,17 @@ function explain(status: number, body: string): Error {
   const snippet = body.slice(0, 300);
 
   if (status === 401 || status === 403) {
+    // The most likely cause by far is a provider/key mismatch: a key from one
+    // service sent to another. Saying only "rejected" sends people hunting
+    // through their own env file for a typo that is not there.
     return new AiProviderError(
-      "The AI provider rejected the API key. Check AI_API_KEY in .env.local — " +
-        "it is not the Supabase key.",
+      `The AI provider at ${currentBase()} rejected the API key.` +
+        "\n\nMost likely: the key belongs to a different service than AI_PROVIDER. " +
+        "Keys are not interchangeable — a Groq key (starts gsk_) only works " +
+        "with AI_PROVIDER=groq, and an OpenAI key (starts sk-) only works " +
+        "with AI_PROVIDER=openai." +
+        "\n\nIf the provider is right, check for a stray space or a truncated " +
+        "paste in AI_API_KEY.",
     );
   }
   if (status === 429) {
@@ -88,8 +111,10 @@ function explain(status: number, body: string): Error {
   }
   if (status === 404) {
     return new AiProviderError(
-      "The configured model name was not found. Check AI_MODEL_FAST and " +
-        "AI_MODEL_QUALITY against your provider's model list.",
+      `The model was not found at ${currentBase()}.` +
+        "\n\nModel names differ per provider. Check AI_MODEL_FAST and " +
+        "AI_MODEL_QUALITY against the provider's own model list — or delete " +
+        "both lines to use the built-in defaults for your provider.",
     );
   }
   if (status === 400 && /context length|too long|maximum context/i.test(snippet)) {
