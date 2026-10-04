@@ -1,0 +1,20 @@
+# Netlify build configuration.
+#
+# Exists because Netlify does not detect Next.js 16 and defaults to an old
+# Node version regardless of what package.json says. Node 20 fails outright:
+# Supabase's client requires 22 or above (ADR-10).
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "24"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Server actions and the auth callback route are dynamic by nature; the
+# generated function needs a Node runtime, not the static edge one.
+[functions]
+  node_bundler = "esbuild"

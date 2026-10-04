@@ -19,10 +19,10 @@ param(
   [string]$Provider = "groq",
 
   # Optional. key.cmd reads the key at the console and passes it in through the
-  # QUBATORS_AI_KEY environment variable rather than a command-line argument,
-  # because on Windows any process can read another process's command line.
-  # When set, the script does not prompt.
-  [string]$Key = $env:QUBATORS_AI_KEY
+  # QBS_KEY environment variable rather than a command-line argument, because on
+  # Windows any process can read another process's command line. When set, the
+  # script does not prompt.
+  [string]$Key = $env:QBS_KEY
 )
 
 $ErrorActionPreference = "Stop"

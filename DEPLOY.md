@@ -46,10 +46,99 @@ C:\dev\QubatorsBuisnessStudio\key.cmd
 
 ---
 
-## Deploying to Vercel (recommended)
+## Deploying to Netlify
 
-Vercel is the fastest route for a Next.js 16 app and has a free tier that
-suits an early pilot.
+Netlify works well for this app and has a generous free tier.
+
+### Step 1 — the repository
+
+The code is already pushed. `main` is up to date at
+`github.com/malaikahero33-ctrl/QubatorsBuisnessStudio`.
+
+### Step 2 — create the site
+
+1. Go to **app.netlify.com/drop** or **app.netlify.com** → **Add new site** →
+   **Import an existing project**
+2. Connect GitHub and choose `QubatorsBuisnessStudio`
+
+Build settings Netlify needs, because it does not detect Next.js 16
+automatically:
+
+| Setting | Value |
+|---|---|
+| Build command | `npm run build` |
+| Publish directory | `.next` |
+| Node version | **24** — set this in the Netlify UI, not just package.json |
+
+For a Node 24 build, add a `.nvmrc` containing `24` and a `netlify.toml`:
+
+```toml
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "24"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+```
+
+Node 20 will fail: Supabase's client requires 22 or above (ADR-10).
+
+### Step 3 — environment variables
+
+**Site configuration → Environment variables**. Add for **all scopes**:
+
+| Name | Value |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://dptubikzfvhtmgjvptmt.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `sb_publishable_...` |
+| `AI_PROVIDER` | `groq` |
+| `AI_API_KEY` | `gsk_...` |
+| `AI_MODEL_FAST` | `llama-3.1-8b-instant` |
+| `AI_MODEL_QUALITY` | `llama-3.3-70b-versatile` |
+| `NEXT_PUBLIC_APP_URL` | `https://<your-site>.netlify.app` |
+
+Do **not** add `SUPABASE_SERVICE_ROLE_KEY` or `SUPABASE_DB_PASSWORD`.
+
+### Step 4 — rebuild
+
+Trigger a fresh deploy after adding variables. Netlify, like Vercel, bakes
+variables in at build time.
+
+### Step 5 — set the domain in Supabase — REQUIRED
+
+Supabase → **Authentication → URL Configuration**:
+
+- **Site URL**: `https://<your-site>.netlify.app`
+- **Redirect URLs**:
+  ```
+  https://<your-site>.netlify.app/auth/callback
+  https://<your-site>.netlify.app/auth/reset-password
+  https://<your-site>.netlify.app/**
+  ```
+
+Until this is done, confirmation and password-reset emails redirect to
+localhost and those features are broken while appearing to work.
+
+### Netlify gotcha
+
+If builds fail with "Cannot find module" or a Node version error, the Node
+version is the cause. Netlify defaults to an old Node regardless of what
+`package.json` says unless `NODE_VERSION` is set in `netlify.toml`.
+
+### Rollback
+
+**Deploys → pick the earlier build → Publish deploy.** No rebuild needed.
+
+---
+
+## Deploying to Vercel
+
+Vercel is also fine and detects Next.js automatically, so it needs fewer
+build settings than Netlify. Everything else is identical: same environment
+variables, same Supabase redirect URL step, same verification order below.
 
 ### Step 1 — push the code
 
