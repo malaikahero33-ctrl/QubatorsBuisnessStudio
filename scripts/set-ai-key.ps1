@@ -16,7 +16,13 @@
 param(
   # Which AI service the key belongs to.
   [ValidateSet("groq", "openai", "together", "mistral", "gemini", "openai_compatible")]
-  [string]$Provider = "groq"
+  [string]$Provider = "groq",
+
+  # Optional. key.cmd reads the key at the console and passes it in through the
+  # QUBATORS_AI_KEY environment variable rather than a command-line argument,
+  # because on Windows any process can read another process's command line.
+  # When set, the script does not prompt.
+  [string]$Key = $env:QUBATORS_AI_KEY
 )
 
 $ErrorActionPreference = "Stop"
@@ -41,21 +47,20 @@ $hint = switch ($Provider) {
   default { "Paste the key exactly as your provider issued it." }
 }
 Write-Host "  $hint" -ForegroundColor DarkGray
-Write-Host ""
 
-# Read-Host hides nothing, so the key is visible while typing. -AsSecureString
-# would be tidier but returns an encrypted value that has to be converted back,
-# which is where these scripts usually go wrong.
-$key = Read-Host "  Paste your API key and press Enter"
+if ([string]::IsNullOrWhiteSpace($Key)) {
+  Write-Host ""
+  $Key = Read-Host "  Paste your API key and press Enter"
+}
 
-if ([string]::IsNullOrWhiteSpace($key)) {
+if ([string]::IsNullOrWhiteSpace($Key)) {
   Write-Host ""
   Write-Host "  Nothing entered. Nothing was changed." -ForegroundColor Yellow
   Write-Host ""
   exit 1
 }
 
-$key = $key.Trim()
+$key = $Key.Trim()
 
 # ---------------------------------------------------------------- validation
 # A helpful mistake now beats a 401 from the provider in thirty seconds.
