@@ -11,10 +11,45 @@
 [build.environment]
   NODE_VERSION = "24"
 
+# ------------------------------------------------------------------
+# The six variables that are NOT secrets.
+#
+# These are committed here deliberately, so that adding them does not require
+# clicking around a dashboard.
+#
+# `sb_publishable_...` is a PUBLIC key. It is designed to end up in browser
+# bundles - the "anon" role it grants can only read rows the row-level
+# security policies allow, and that role is what the entire security model is
+# built around. It is not a credential in the sense that AI_API_KEY is.
+#
+# Everything except AI_API_KEY is safe to be in version control. That one is
+# not, so it is the only variable that has to be entered by hand in Netlify:
+# Site configuration -> Environment variables -> AI_API_KEY.
+# ------------------------------------------------------------------
+
+# Which Supabase project this deployment talks to.
+NEXT_PUBLIC_SUPABASE_URL = "https://dptubikzfvhtmgjvptmt.supabase.co"
+
+# Publishable / anon key. Public by design - see above.
+NEXT_PUBLIC_SUPABASE_ANON_KEY = "sb_publishable_gEsUWY6dz65D0HRfgGC1fw_WOptPqMW"
+
+# AI provider and its two model tiers.
+# The model names are Groq's, which is why the provider and the models belong
+# together: sending an OpenAI model name to Groq is a 404.
+AI_PROVIDER = "groq"
+AI_MODEL_FAST = "llama-3.1-8b-instant"
+AI_MODEL_QUALITY = "llama-3.3-70b-versatile"
+
+# NOTE: NEXT_PUBLIC_APP_URL is deliberately absent.
+#
+# It is only a fallback - lib/auth/actions.ts prefers the incoming request's
+# own host header, which is correct on every host automatically. Setting it
+# to a guess would be worse than leaving it unset, because a wrong value
+# would send password-reset emails to the wrong domain. Add it by hand only
+# if you have a custom domain and want to pin it.
+
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-# Server actions and the auth callback route are dynamic by nature; the
-# generated function needs a Node runtime, not the static edge one.
 [functions]
   node_bundler = "esbuild"
