@@ -15,9 +15,18 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 
 export type DatabaseStatus = {
-  /** Do the core tables exist? */
+  /**
+   * Do the core tables exist?
+   *
+   * True whenever PostgREST resolved the relation, even if the row count could
+   * not be read. Existence and readability are separate questions.
+   */
   tablesExist: boolean;
-  /** How many businesses are present. null when it could not be determined. */
+  /**
+   * How many businesses are visible. `null` means "cannot tell", which is
+   * different from 0. A signed-out visitor can normally see zero rows because
+   * RLS hides them, so 0 would be misleading here.
+   */
   businessCount: number | null;
   /** A message to show the user, when something went wrong. */
   error: string | null;
@@ -40,6 +49,26 @@ export async function checkDatabaseStatus(): Promise<DatabaseStatus> {
     return { tablesExist: false, businessCount: null, error: "Supabase is not configured" };
   }
 
+  // If there is a session, count through it: RLS then returns exactly the rows
+  // this user may see, which is a real number. Without a session, all we can
+  // establish is whether the table exists - `anon` is granted nothing on
+  // purpose, and reading zero rows would look like "no data" rather than
+  // "not permitted to look".
+  if (await hasSession()) {
+    try {
+      const supabase = await createClient();
+      const { count, error } = await supabase
+        .from("businesses")
+        .select("id", { count: "exact", head: true });
+
+      if (!error) {
+        return { tablesExist: true, businessCount: count ?? 0, error: null };
+      }
+    } catch {
+      // Fall through to the anonymous probe below.
+    }
+  }
+
   // A short timeout: this runs during page render, and a hanging check would
   // hang the page. Failing fast and saying "unknown" beats a slow page.
   const controller = new AbortController();
@@ -58,9 +87,9 @@ export async function checkDatabaseStatus(): Promise<DatabaseStatus> {
       },
     );
 
-    // PGRST205 means PostgREST cannot find the relation: the table genuinely
-    // does not exist. That is the one answer that proves migrations have not
-    // been run.
+    // PGRST205 means PostgREST cannot find the relation at all: the table
+    // genuinely does not exist. That is the only answer that proves the
+    // migrations have not been run.
     if (response.status === 404) {
       return {
         tablesExist: false,
@@ -70,13 +99,42 @@ export async function checkDatabaseStatus(): Promise<DatabaseStatus> {
       };
     }
 
+    /*
+     * 42501 is NOT a sign the database is broken.
+     *
+     * PostgREST resolves the relation first, then checks permissions. So a 42501
+     * - "permission denied for table businesses" - means the table WAS found.
+     * It is what this check always gets, because `anon` is deliberately granted
+     * nothing: ADR-14 refuses unsigned-out requests in the database rather
+     * than in the application layer.
+     *
+     * An earlier version of this file reported 42501 as "the database refused
+     * the request, check that 0004_grants.sql was applied", which told a
+     * correctly configured app that it was broken. Reading the Postgres error
+     * code rather than the HTTP status is the whole difference between the
+     * two cases:
+     *
+     *   404 + PGRST205  -> the table is missing
+     *   401 + 42501     -> the table exists, and anon is correctly denied
+     */
     if (response.status === 401 || response.status === 403) {
+      const body = await response.text();
+
+      if (/PGRST205|Could not find the table/i.test(body)) {
+        return {
+          tablesExist: false,
+          businessCount: null,
+          error:
+            "The database tables do not exist yet. Run `npm run db:push` to create them.",
+        };
+      }
+
+      // The table resolved. Everything is fine; we simply cannot count rows
+      // without a session, and we should not claim otherwise.
       return {
-        tablesExist: false,
+        tablesExist: true,
         businessCount: null,
-        error:
-          "The database refused the request. If you have run the migrations, check that " +
-          "migration 0004_grants.sql was applied — without it every read is denied.",
+        error: null,
       };
     }
 
